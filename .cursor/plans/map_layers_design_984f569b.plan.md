@@ -1,0 +1,411 @@
+---
+name: Map Layers Design
+overview: Greenfield pnpm monorepo for a solo, local-first Mapbox app with a Figma-like nested layer tree, viewport-biased place search, and pins colored by layer — reusing map style and pin chrome from yelp-combinator-frontend.
+todos:
+    - id: scaffold
+      content: 'Scaffold monorepo + seed docs/ARCHITECTURE.md, AGENTS.md, and always-apply architecture-doc rule'
+      status: pending
+    - id: living-docs
+      content: 'Seed in-repo living docs (ARCHITECTURE, AGENTS, architecture-doc rule)'
+      status: completed
+    - id: domain
+      content: Implement Document/Layer/Place model, tree mutations, effective visibility/color selectors + tests
+      status: pending
+    - id: store
+      content: Zustand document store with IndexedDB persistence
+      status: pending
+    - id: map-shell
+      content: Mapbox map with yelp style URL, token, basic controls
+      status: pending
+    - id: layers-panel
+      content: 'Left layers panel: tree, eye toggle, color, create/rename/delete/ungroup, dnd'
+      status: pending
+    - id: pins
+      content: Adapt IconMarker/Cluster patterns; pins use effective layer color; selection sync
+      status: pending
+    - id: search
+      content: Mapbox Search Box client + multi-select add to top/layer/new layer
+      status: pending
+    - id: polish
+      content: Fit bounds, confirm dialogs, empty states, rename UX
+      status: pending
+isProject: false
+---
+
+# Map Layers — System, Architecture & UI Design
+
+## Product summary
+
+A solo, local-first web app: full-bleed Mapbox map + left layers panel. Users search for places, add one/many/all results into nested layers (or the top of the tree), then show/hide layers and assign a layer color that drives all pins under that layer.
+
+**Out of scope (v1):** accounts, sync, import/export, multiplayer.
+
+---
+
+## Stack (locked)
+
+| Layer       | Choice                                                                        |
+| ----------- | ----------------------------------------------------------------------------- |
+| Monorepo    | **pnpm workspaces + Turborepo**                                               |
+| App         | React 19 + Vite + TypeScript                                                  |
+| CSS         | Tailwind CSS v4 (`@tailwindcss/vite`)                                         |
+| Lint/format | Biome (root config)                                                           |
+| Map         | `mapbox-gl` + `react-map-gl`                                                  |
+| Map style   | `mapbox://styles/louiscohen/cm54miu4700j201qparty6veb` (from yelp-combinator) |
+| Token       | `VITE_MAPBOX_ACCESS_TOKEN` in `apps/web/.env`                                 |
+| State       | Zustand + persist to **IndexedDB** (`idb-keyval`)                             |
+| DnD         | `@dnd-kit` for layer tree reorder/reparent                                    |
+| Motion      | `motion` (pin select / panel transitions)                                     |
+| Search      | **Mapbox Search Box API** (see note below)                                    |
+
+### Search API note (important)
+
+You asked for Mapbox Geocoding. **Geocoding v6 no longer returns POIs** (restaurants, shops, etc.) — only addresses/places in the administrative sense. For a “places” product, v1 will use **[Search Box API](https://docs.mapbox.com/api/search/search-box/)** (`/search/searchbox/v1/...`) with:
+
+- debounce + `proximity` / `bbox` from current map viewport
+- session tokens for Suggest → Retrieve
+- permanent storage eligibility respected for saved places (Mapbox terms: do not persist temporary geocode-only results without the permanent/storage-allowed path)
+
+If you later want pure address geocoding only, we can add Geocoding v6 as a second mode behind the same `PlaceSearchProvider` interface.
+
+---
+
+## Monorepo layout
+
+```
+map-layers/
+  apps/web/                 # Vite React app (the product)
+  packages/
+    domain/                 # pure TS: tree model, selectors, mutations (no React)
+    tsconfig/               # shared TS configs
+  biome.json
+  package.json
+  pnpm-workspace.yaml
+  turbo.json
+```
+
+- **`packages/domain`**: tree operations, effective visibility/color, IDs — unit-testable without the UI.
+- **`apps/web`**: Mapbox UI, Zustand store wiring, search client, pin components adapted from yelp-combinator.
+
+No backend package in v1.
+
+---
+
+## Domain model
+
+Flat node map + ordered child ID lists (same pattern as Figma: easy move/reparent without deep immutable clones).
+
+**Discriminated union from day one** so future geometry types (isochrones, etc.) slot in without rewriting the tree:
+
+```ts
+type NodeId = string;
+
+type PlaceNode = {
+    id: NodeId;
+    kind: 'place';
+    name: string;
+    mapboxId: string; // Search Box feature id
+    coordinates: { lng: number; lat: number };
+    address?: string;
+    featureType?: string; // e.g. poi, address
+    raw?: unknown; // trimmed Search Box payload if useful later
+};
+
+type LayerNode = {
+    id: NodeId;
+    kind: 'layer';
+    name: string;
+    visible: boolean; // own toggle (effective = AND ancestors)
+    color: string; // hex; drives pins / future fills under this layer
+    collapsed: boolean; // UI-only, persisted for comfort
+    children: NodeId[]; // ordered: layers and/or leaf content nodes
+};
+
+/** v1: only PlaceNode is implemented. Future leaf kinds share this slot. */
+type ContentNode = PlaceNode; // later: PlaceNode | IsochroneNode | ...
+
+type Document = {
+    rootChildren: NodeId[];
+    nodes: Record<NodeId, LayerNode | ContentNode>;
+    defaultPlaceColor: string; // for places sitting at root
+};
+```
+
+### Effective properties (derived)
+
+- **Visible:** node is shown iff every ancestor layer has `visible: true` (and for a leaf, its containing path is visible). Hidden parent ⇒ all descendants hidden on the map (Figma/Photoshop behavior).
+- **Color:** walk from leaf → parent layers; use the **nearest ancestor layer’s `color`**. Root-level places use `defaultPlaceColor`.
+- Nested layer with its own color overrides parent for its subtree only.
+- Same cascade applies later to GeoJSON fills/outlines (isochrones inherit layer color / opacity).
+
+### Layer naming defaults
+
+When creating a layer from search: **default name = the search query string** (trimmed). User can rename anytime. Empty manual create: prompt for name first (modal), refuse empty.
+
+### Core mutations (`packages/domain`)
+
+- `createLayer({ name, parentId | root, color? })`
+- `renameNode(id, name)`
+- `setLayerVisible(id, visible)` / `toggleLayerVisible(id)`
+- `setLayerColor(id, color)`
+- `moveNodes({ ids, targetParentId | root, index })` — reorder + reparent
+- `ungroupLayer(id)` — splice layer’s `children` into parent at the layer’s index; delete the layer node
+- `deleteNodes(ids)` — recursive for layers (confirm in UI); places removed from parent
+- `addPlaces({ places, targetParentId | root, index? })` — dedupe by `mapboxId` within document (skip or toast duplicates)
+
+---
+
+## Architecture
+
+```mermaid
+flowchart LR
+  subgraph ui [apps/web]
+    LayersPanel --> Store
+    SearchUI --> SearchClient
+    SearchUI --> Store
+    MapView --> Store
+    MapView --> Pins
+  end
+  subgraph domain [packages/domain]
+    TreeOps
+    Selectors
+  end
+  Store --> TreeOps
+  Store --> Selectors
+  Store --> IDB[(IndexedDB)]
+  SearchClient --> MapboxSearch[Mapbox Search Box]
+  MapView --> MapboxGL[Mapbox GL + custom style]
+```
+
+### State (Zustand)
+
+Single `documentStore`:
+
+- `document: Document`
+- UI: `selectedNodeIds`, `selectedPlaceId` (map focus), `searchQuery`, `searchResults`, `searchSelection`, `pendingAddTarget`
+- Actions wrap `packages/domain` mutations, then persist
+
+Persist middleware → IndexedDB key `map-layers:v1`. No account.
+
+### Map rendering (dual path by design)
+
+Port patterns from yelp-combinator (not a hard dependency — copy/adapt):
+
+- Map shell like [`MapRender.tsx`](/Users/louis/Developer/yelp-combinator-frontend/src/components/MapRender.tsx): same style URL + token env
+- Pins like [`IconMarker`](/Users/louis/Developer/yelp-combinator-frontend/src/components/IconMarker/index.tsx): 32px circle, border, shadow, selected spring scale — but **`color` prop from effective layer color**, not Yelp category
+- Use a single generic location glyph (e.g. port `Location` icon) rather than the full category icon set
+- Optional: Supercluster + `ClusterMarker` if pin density gets high; start without clustering, add if needed
+- Click pin → select place in tree + lightweight detail popover (name, address, “reveal in layers”)
+
+Only **effectively visible** places render as markers.
+
+**Render split (v1 implements points only; polygons reserved):**
+
+| Content kind | Mapbox mechanism |
+|--------------|------------------|
+| `place` (points) | `react-map-gl` HTML `<Marker>` (current plan) |
+| Future isochrone / isodistance (polygons) | `Source` + `Layer` (`fill` / `line`) fed by stored GeoJSON |
+
+Layer groups stay DOM-tree UI only; they never become Mapbox style layers. Contours hang off the same tree as leaves and paint via GL sources keyed by node id.
+
+### Search client
+
+`apps/web/src/lib/mapboxSearch.ts`:
+
+1. Suggest (debounced) with `proximity` = map center, optional `bbox` = viewport
+2. Retrieve selected suggestions → normalize to `PlaceNode` draft
+3. Multi-select in results UI; “Add all” runs Retrieve for each as needed
+
+---
+
+## UI design
+
+### Layout
+
+```
+┌─────────────────┬──────────────────────────────────┐
+│ Layers          │                                  │
+│  [+ Layer]      │           Mapbox map             │
+│  tree…          │                                  │
+│─────────────────│     pins colored by layer        │
+│ Search places   │                                  │
+│  [query     ]   │                                  │
+│  results list   │                                  │
+│  Add to ▾       │                                  │
+└─────────────────┴──────────────────────────────────┘
+```
+
+- Left pane ~280–320px, resizable later; glass/neutral chrome consistent with yelp map UI (not purple/cream AI defaults).
+- Map is the remaining viewport; body `overflow: hidden`, `h-svh`.
+
+### Layers panel (Figma-like)
+
+Each row:
+
+- Drag handle
+- Expand/collapse (layers only)
+- Visibility eye toggle
+- Color swatch (layers only) → popover palette (seed from yelp [`ColorPalette.ts`](/Users/louis/Developer/yelp-combinator-frontend/src/constants/ColorPalette.ts))
+- Name (inline rename on double-click / Enter)
+- Context menu: New sublayer, Ungroup, Delete, Fit map to contents
+
+Behaviors:
+
+| Action         | Behavior                                                                                       |
+| -------------- | ---------------------------------------------------------------------------------------------- |
+| Create layer   | Modal asks name → insert under selection or root                                               |
+| Reorder / nest | Drag onto layer or between rows; drop on root allowed                                          |
+| Ungroup        | Children move to parent (or root); layer removed                                               |
+| Hide layer     | Eye off; descendants disappear from map; nested eyes remain but ineffective until parent shown |
+| Color          | Sets layer color; all descendant places’ pins update immediately                               |
+
+Places appear as leaf rows under their layer (indent). Selecting a place flies the map to it.
+
+### Search → add flow
+
+1. User types query in Search section (or Cmd-K later).
+2. Results list with checkboxes; “Select all”.
+3. Destination control: **Top level** | **Existing layer…** | **New layer** (name prefilled with query).
+4. Confirm **Add** → places inserted; if New layer, create layer then add places as children; optionally fly/fit bounds to added set.
+
+---
+
+## Features included in v1 (explicit)
+
+- Nested layers + root-level places
+- Show/hide with ancestor cascade
+- Per-layer color → pin color
+- Create / rename / delete / ungroup / reorder / reparent
+- Search Box → add one / many / all
+- Local persistence (IndexedDB)
+- Place select on map ↔ tree highlight
+- Fit bounds to layer or selection
+
+## Explicitly deferred
+
+- Import/export (GeoJSON), share links
+- Accounts / sync
+- Layer opacity, lock, blend modes
+- Multi-document / projects
+- Offline maps
+- Collaboration
+- Isochrone / isodistance overlays (architecture-ready; not built in v1 — see below)
+
+---
+
+## Future: isochrone / isodistance (architecture fit)
+
+**Yes — this architecture supports it** without changing the layer-tree or visibility/color model. Contours are another **leaf content kind** in the same nested groups.
+
+### How it would plug in
+
+1. **Domain** — add a leaf node, e.g.:
+
+```ts
+type IsochroneNode = {
+  id: NodeId;
+  kind: 'isochrone'; // or 'isodistance'
+  name: string;
+  center: { lng: number; lat: number };
+  profile: 'walking' | 'cycling' | 'driving';
+  contours: number[];       // minutes or meters
+  geojson: GeoJSON.FeatureCollection; // from Mapbox Isochrone API
+};
+```
+
+Widen `ContentNode` to `PlaceNode | IsochroneNode`. Tree mutations (`move`, `delete`, visibility cascade, ungroup) already operate on `NodeId`s and do not care about geometry.
+
+2. **API** — thin client for [Mapbox Isochrone API](https://docs.mapbox.com/api/navigation/isochrone/) (`/isochrone/v1/{profile}/{lon},{lat}`). Creation UI: pick center (map click or existing place), time vs distance, profile, contour steps → fetch GeoJSON → `addIsochrone` into target layer / new layer (name like `15 min walk`).
+
+3. **Map** — for each effectively visible isochrone node, mount `<Source id={node.id} type="geojson" data={node.geojson}>` with fill/line layers styled from **effective layer color** (+ optional per-contour opacity). Z-order: draw polygons under HTML markers (or respect tree order via layer ordering helpers).
+
+4. **Layers panel** — new row type (polygon icon); same eye toggle / rename / delete / drag. Color still lives on the **parent layer** (or allow a local override later). Fit-bounds uses the GeoJSON bbox.
+
+5. **What already works unchanged:** nesting, show/hide cascade, reorder/reparent, ungroup, IndexedDB persistence, solo local-first model.
+
+### Caveats (not blockers)
+
+- **Two render pipelines** (HTML markers vs GL fill/line) — planned above; keep map orchestration as “collect visible leaves → dispatch by `kind`”.
+- **Payload size** — Isochrone GeoJSON is larger than place points; IndexedDB is fine for moderate counts; if many contours, consider storing params + refetch, or simplifying geometry.
+- **Mapbox terms** — cache/store Isochrone responses only as their ToS allows (same class of concern as Search Box persistence).
+- **Opacity / blend** — useful for stacked contours; deferred with other layer chrome, but color cascade already covers the main visual link.
+
+**v1 commitment:** do not build isochrones yet; do keep `ContentNode` as an extensible union and a single “visible leaves → render” map path so this lands as an additive feature.
+
+---
+
+## Implementation phases
+
+1. **Scaffold** — pnpm + turbo + `apps/web` + `packages/domain` + Biome + Tailwind v4 + env template; seed `docs/ARCHITECTURE.md` from this plan; add `AGENTS.md` + `.cursor/rules/architecture-doc.mdc`
+2. **Domain** — tree types, mutations, effective visibility/color selectors + unit tests
+3. **Store + persist** — Zustand document store wired to domain
+4. **Map shell** — Mapbox style/token, empty map, locate control
+5. **Layers panel** — tree UI, visibility, color, create/rename/delete/ungroup, dnd
+6. **Pins** — adapted IconMarker driven by effective color; selection sync
+7. **Search** — Search Box client + results + add-to-target flow
+8. **Polish** — fit bounds, empty states, keyboard rename, confirm dialogs
+9. **Doc hygiene** — each phase ends with Architecture Status updated to match the tree
+
+---
+
+## Env
+
+`apps/web/.env`:
+
+```
+VITE_MAPBOX_ACCESS_TOKEN=pk.…   # value you provided
+```
+
+`.env.example` documents the key name only; token stays local (pk tokens are publishable but still not committed if you prefer).
+
+---
+
+## Living primary doc (agents keep updated)
+
+**Done:** Canonical copy is in-repo. **Source of truth:** [`docs/ARCHITECTURE.md`](../../docs/ARCHITECTURE.md) (also `AGENTS.md`, `.cursor/rules/architecture-doc.mdc`).
+
+This Cursor plan is secondary; if it diverges, Architecture wins.
+
+### Supporting pointers
+
+| File | Role |
+|------|------|
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Canonical living design + current status |
+| [`AGENTS.md`](AGENTS.md) | Short entrypoint: read/update Architecture before/after work |
+| [`.cursor/rules/architecture-doc.mdc`](.cursor/rules/architecture-doc.mdc) | `alwaysApply: true` rule that enforces the habit |
+
+### Agent rule (always apply)
+
+Agents must:
+
+1. **Read** `docs/ARCHITECTURE.md` at the start of non-trivial work.
+2. **Update it in the same change** when they alter behavior, domain model, stack, UI structure, or deferred/future scope — not in a follow-up “docs later” pass.
+3. Keep a top **Status** section current: what exists, what’s next, known gaps.
+4. Prefer amending the doc over inventing parallel docs (`README` stays install/run only; deep design stays in Architecture).
+5. When a Cursor plan file also exists for a task, treat **`docs/ARCHITECTURE.md` as authoritative** after scaffold; sync plan → doc if they diverge.
+
+### Status block template (top of Architecture)
+
+```markdown
+## Status
+- Last updated: YYYY-MM-DD
+- Implemented: …
+- In progress: …
+- Next: …
+- Deferred: … (link to sections below)
+```
+
+### What not to do
+
+- Do not leave the only design copy in `~/.cursor/plans/`.
+- Do not split into many overlapping markdown files without linking from Architecture.
+- Do not commit secrets into the doc (token names only).
+
+---
+
+## Open product defaults (chosen, not optional)
+
+- **Delete layer:** deletes the layer and all nested places/layers (confirm dialog). Ungroup is the non-destructive alternative.
+- **Duplicate mapboxId:** skip duplicate with a short toast; do not create a second pin for the same feature.
+- **Default new-layer color:** next unused color from a fixed palette rotation.
+- **Clustering:** off in v1; add if pin count becomes painful.

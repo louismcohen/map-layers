@@ -1,0 +1,22 @@
+---
+description: Keep docs/ARCHITECTURE.md as the living primary app doc
+alwaysApply: true
+---
+
+# Living architecture doc
+
+`docs/ARCHITECTURE.md` is the canonical product/architecture doc for this repo.
+
+## Required
+
+- Read `docs/ARCHITECTURE.md` (especially **Status**) before non-trivial work.
+- When you change behavior, domain model, stack, UI structure, or deferred scope, update `docs/ARCHITECTURE.md` in the **same** change.
+- Keep the Status block current: Last updated, Implemented, In progress, Next, Deferred.
+- Prefer amending Architecture over creating new design markdown files. Link from Architecture if a split is necessary.
+- `README.md` is install/run only.
+- If `.cursor/plans/` diverges from Architecture, Architecture wins — sync or drop the plan.
+
+## Do not
+
+- Leave the only design copy in `.cursor/plans/`
+- Commit secrets or access tokens into docs (env var names only)
