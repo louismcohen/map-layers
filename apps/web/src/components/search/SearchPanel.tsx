@@ -1,164 +1,30 @@
-import { listLayers, type NodeId, pickRandomLayerColor, type PlaceDraft } from '@map-layers/domain'
-import { useEffect, useMemo, useRef, useState } from 'react'
 import type { MapRef } from 'react-map-gl'
-import { useDebouncedCallback } from 'use-debounce'
+import { usePlaceSearch } from '@/hooks/usePlaceSearch'
 import { cn } from '@/lib/cn'
-import { forwardSearch } from '@/lib/mapboxSearch'
-import { type AddTarget, useDocumentStore } from '@/store/documentStore'
 
 type SearchPanelProps = {
 	mapRef: React.RefObject<MapRef | null>
 }
 
-type Destination = { mode: 'root' } | { mode: 'layer'; layerId: NodeId } | { mode: 'new-layer' }
-
-function fitMapToPlaces(mapRef: React.RefObject<MapRef | null>, places: PlaceDraft[]) {
-	if (!mapRef.current || places.length === 0) return
-	if (places.length === 1 && places[0]) {
-		mapRef.current.flyTo({
-			center: [places[0].coordinates.lng, places[0].coordinates.lat],
-			zoom: 14,
-			duration: 700,
-		})
-		return
-	}
-	const lngs = places.map((p) => p.coordinates.lng)
-	const lats = places.map((p) => p.coordinates.lat)
-	mapRef.current.fitBounds(
-		[
-			[Math.min(...lngs), Math.min(...lats)],
-			[Math.max(...lngs), Math.max(...lats)],
-		],
-		{ padding: 80, duration: 700 },
-	)
-}
-
 export function SearchPanel({ mapRef }: SearchPanelProps) {
-	const document = useDocumentStore((s) => s.document)
-	const searchPreview = useDocumentStore((s) => s.searchPreview)
-	const addPlaces = useDocumentStore((s) => s.addPlaces)
-	const pushToast = useDocumentStore((s) => s.pushToast)
-	const selectPlace = useDocumentStore((s) => s.selectPlace)
-	const setSearchPreview = useDocumentStore((s) => s.setSearchPreview)
-	const toggleSearchSelection = useDocumentStore((s) => s.toggleSearchSelection)
-	const setSearchSelection = useDocumentStore((s) => s.setSearchSelection)
-
-	const [query, setQuery] = useState('')
-	const [loading, setLoading] = useState(false)
-	const [adding, setAdding] = useState(false)
-	const [error, setError] = useState<string | null>(null)
-	const [destination, setDestination] = useState<Destination>({ mode: 'new-layer' })
-	const [newLayerName, setNewLayerName] = useState('')
-	const abortRef = useRef<AbortController | null>(null)
-
-	const layers = useMemo(() => listLayers(document), [document])
-	const results = searchPreview?.results ?? []
-	const selected = useMemo(
-		() => new Set(searchPreview?.selectedMapboxIds ?? []),
-		[searchPreview?.selectedMapboxIds],
-	)
-
-	const runSearch = useDebouncedCallback(async (value: string) => {
-		abortRef.current?.abort()
-		const controller = new AbortController()
-		abortRef.current = controller
-
-		if (!value.trim()) {
-			setSearchPreview(null)
-			setLoading(false)
-			setError(null)
-			return
-		}
-		const map = mapRef.current?.getMap()
-		const center = map?.getCenter()
-		const bounds = map?.getBounds()
-		try {
-			setLoading(true)
-			setError(null)
-
-			const drafts = await forwardSearch({
-				query: value,
-				proximity: center ? { lng: center.lng, lat: center.lat } : undefined,
-				bbox: bounds
-					? [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()]
-					: undefined,
-				signal: controller.signal,
-			})
-
-			if (controller.signal.aborted) return
-
-			if (drafts.length === 0) {
-				setSearchPreview(null)
-				return
-			}
-
-			const color = pickRandomLayerColor()
-			setSearchPreview({
-				color,
-				results: drafts,
-				selectedMapboxIds: [],
-			})
-		} catch (err) {
-			if ((err as Error).name === 'AbortError') return
-			setError(err instanceof Error ? err.message : 'Search failed')
-			setSearchPreview(null)
-		} finally {
-			if (!controller.signal.aborted) setLoading(false)
-		}
-	}, 300)
-
-	useEffect(() => {
-		runSearch(query)
-	}, [query, runSearch])
-
-	useEffect(() => {
-		setNewLayerName(query.trim())
-	}, [query])
-
-	const selectAll = () => setSearchSelection(results.map((r) => r.mapboxId))
-
-	const handleAdd = async () => {
-		if (!searchPreview || selected.size === 0) return
-		setAdding(true)
-		try {
-			const drafts = searchPreview.results.filter((r) => selected.has(r.mapboxId))
-			let target: AddTarget
-			if (destination.mode === 'root') target = { type: 'root' }
-			else if (destination.mode === 'layer')
-				target = { type: 'layer', layerId: destination.layerId }
-			else
-				target = {
-					type: 'new-layer',
-					name: newLayerName.trim() || query.trim() || 'New layer',
-					color: searchPreview.color,
-				}
-
-			const addedIds = addPlaces(drafts, target)
-			if (addedIds[0]) selectPlace(addedIds[0])
-
-			const doc = useDocumentStore.getState().document
-			const coords = addedIds
-				.map((id) => doc.nodes[id])
-				.filter((n): n is Extract<typeof n, { kind: 'place' }> => n?.kind === 'place')
-
-			fitMapToPlaces(
-				mapRef,
-				coords.map((p) => ({
-					mapboxId: p.mapboxId,
-					name: p.name,
-					coordinates: p.coordinates,
-					address: p.address,
-					featureType: p.featureType,
-				})),
-			)
-
-			setQuery('')
-		} catch (err) {
-			pushToast(err instanceof Error ? err.message : 'Could not add places')
-		} finally {
-			setAdding(false)
-		}
-	}
+	const {
+		query,
+		setQuery,
+		loading,
+		adding,
+		error,
+		destination,
+		setDestination,
+		newLayerName,
+		setNewLayerName,
+		layers,
+		results,
+		selected,
+		searchPreview,
+		toggleSearchSelection,
+		selectAll,
+		addSelected,
+	} = usePlaceSearch(mapRef)
 
 	return (
 		<div className="flex max-h-[45%] min-h-[180px] flex-col border-t border-neutral-800">
@@ -281,7 +147,7 @@ export function SearchPanel({ mapRef }: SearchPanelProps) {
 				<button
 					type="button"
 					disabled={selected.size === 0 || adding}
-					onClick={handleAdd}
+					onClick={addSelected}
 					className={cn(
 						'w-full rounded-md bg-neutral-100 py-2 text-xs font-semibold text-neutral-900',
 						(selected.size === 0 || adding) && 'opacity-40',

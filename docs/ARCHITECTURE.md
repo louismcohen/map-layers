@@ -3,7 +3,7 @@
 ## Status
 
 - Last updated: 2026-08-06
-- Implemented: living docs; monorepo; domain; Zustand/IndexedDB; Mapbox (LA default + geolocation); layers panel; pins; Search Box **forward** search (`proximity` + viewport `bbox`; preview pins stay in place — no auto-zoom); random color for new layers; fit bounds on add / layer fit; modals/toasts
+- Implemented: living docs; monorepo; domain (+ `resolveDropTarget`); Zustand/IndexedDB; Mapbox (LA default + geolocation); layers panel; pins; Search Box with on-map preview pins (random color reused for new layers); fit bounds; modals/toasts; UI orchestration hooks (`usePlaceSearch`, `useFlyToSelectedPlace`, `useFlyToUserOnce`) + shared `mapCamera` helpers
 - In progress: none
 - Next: optional polish (layer opacity, clustering, isochrones)
 - Deferred: see [Explicitly deferred](#explicitly-deferred) and [Future: isochrone / isodistance](#future-isochrone--isodistance-architecture-fit)
@@ -65,8 +65,18 @@ map-layers/
   turbo.json
 ```
 
-- **`packages/domain`**: tree operations, effective visibility/color, IDs — unit-testable without the UI.
+- **`packages/domain`**: tree operations, effective visibility/color, DnD drop resolution, IDs — unit-testable without the UI.
 - **`apps/web`**: Mapbox UI, Zustand store wiring, search client, pin components adapted from yelp-combinator.
+
+### App layering (`apps/web`)
+
+| Layer | Responsibility |
+| --- | --- |
+| `packages/domain` | Pure document/tree rules (mutations, selectors, `resolveDropTarget`) |
+| `lib/` | I/O adapters (`mapboxSearch`) and Mapbox camera helpers (`mapCamera`) |
+| `store/` | Zustand: document + selection + `searchPreview` + toasts; wraps domain |
+| `hooks/` | React lifecycle + store coordination (`usePlaceSearch`, `useLocation`, camera policies) |
+| `components/` | Presentational UI: props/events in, render out |
 
 No backend package in v1.
 
@@ -130,6 +140,7 @@ When creating a layer from search: **default name = the search query string** (t
 - `setLayerVisible(id, visible)` / `toggleLayerVisible(id)`
 - `setLayerColor(id, color)`
 - `moveNodes({ ids, targetParentId | root, index })` — reorder + reparent
+- `resolveDropTarget(doc, activeId, overId)` — map DnD over-target to `{ parentId, index }` for `moveNodes`
 - `ungroupLayer(id)` — splice layer’s `children` into parent at the layer’s index; delete the layer node
 - `deleteNodes(ids)` — recursive for layers (confirm in UI); places removed from parent
 - `addPlaces({ places, targetParentId | root, index? })` — dedupe by `mapboxId` within document (skip or toast duplicates)
@@ -142,14 +153,17 @@ When creating a layer from search: **default name = the search query string** (t
 flowchart LR
   subgraph ui [apps/web]
     LayersPanel --> Store
-    SearchUI --> SearchClient
-    SearchUI --> Store
+    LayersPanel --> resolveDropTarget
+    SearchPanel --> usePlaceSearch
+    usePlaceSearch --> SearchClient
+    usePlaceSearch --> Store
     MapView --> Store
     MapView --> Pins
   end
   subgraph domain [packages/domain]
     TreeOps
     Selectors
+    resolveDropTarget
   end
   Store --> TreeOps
   Store --> Selectors
@@ -163,7 +177,8 @@ flowchart LR
 Single `documentStore`:
 
 - `document: Document`
-- UI: `selectedNodeIds`, `selectedPlaceId` (map focus), `searchQuery`, `searchResults`, `searchSelection`, `pendingAddTarget`
+- UI: `selectedNodeIds`, `selectedPlaceId` (map focus), `searchPreview` (`color`, `results`, `selectedMapboxIds`)
+- Ephemeral panel state (query string, add destination) lives in `usePlaceSearch`, not the store
 - Actions wrap `packages/domain` mutations, then persist
 
 Persist middleware → IndexedDB key `map-layers:v1`. No account.

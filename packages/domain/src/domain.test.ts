@@ -10,6 +10,7 @@ import {
 	setLayerVisible,
 	ungroupLayer,
 } from './mutations'
+import { resolveDropTarget } from './resolveDropTarget'
 import { getEffectiveColor, isEffectivelyVisible, listVisiblePlaces } from './selectors'
 
 describe('domain tree', () => {
@@ -181,5 +182,50 @@ describe('domain tree', () => {
 		expect(getEffectiveColor(doc, placeId)).toBe(doc.defaultPlaceColor)
 		doc = renameNode(doc, placeId, '  Renamed  ')
 		expect(doc.nodes[placeId]?.name).toBe('Renamed')
+	})
+
+	it('resolveDropTarget: drop on layer appends as child', () => {
+		let doc = createEmptyDocument()
+		const layer = createLayer(doc, { name: 'L' })
+		doc = layer.doc
+		const places = addPlaces(doc, {
+			places: [
+				{
+					name: 'A',
+					mapboxId: 'a',
+					coordinates: { lng: 0, lat: 0 },
+				},
+			],
+		})
+		doc = places.doc
+		const placeId = places.addedIds[0]
+		if (!placeId) throw new Error('missing')
+
+		expect(resolveDropTarget(doc, placeId, layer.layerId)).toEqual({
+			parentId: layer.layerId,
+			index: 0,
+		})
+	})
+
+	it('resolveDropTarget: drop on sibling inserts at sibling index', () => {
+		let doc = createEmptyDocument()
+		const layer = createLayer(doc, { name: 'L' })
+		doc = layer.doc
+		const places = addPlaces(doc, {
+			targetParentId: layer.layerId,
+			places: [
+				{ name: 'A', mapboxId: 'a', coordinates: { lng: 0, lat: 0 } },
+				{ name: 'B', mapboxId: 'b', coordinates: { lng: 1, lat: 1 } },
+			],
+		})
+		doc = places.doc
+		const [aId, bId] = places.addedIds
+		if (!aId || !bId) throw new Error('missing')
+
+		expect(resolveDropTarget(doc, aId, bId)).toEqual({
+			parentId: layer.layerId,
+			index: 1,
+		})
+		expect(resolveDropTarget(doc, aId, aId)).toBeNull()
 	})
 })

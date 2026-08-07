@@ -1,9 +1,10 @@
 import { listVisiblePlaces } from '@map-layers/domain'
-import { useEffect, useMemo, useRef } from 'react'
+import { useMemo } from 'react'
 import type { MapRef } from 'react-map-gl'
 import { Map as MapboxMap } from 'react-map-gl'
 import { PlaceMarker } from '@/components/map/PlaceMarker'
 import { UserLocationMarker } from '@/components/map/UserLocationMarker'
+import { useFlyToUserOnce } from '@/hooks/useFlyToUserOnce'
 import type { LocationState } from '@/hooks/useLocation'
 import { DEFAULT_CENTER, DEFAULT_ZOOM, getMapboxToken, MAP_STYLE } from '@/lib/constants'
 import { useDocumentStore } from '@/store/documentStore'
@@ -18,30 +19,11 @@ export function MapView({ mapRef, userLocation, onMoveEnd }: MapViewProps) {
 	const document = useDocumentStore((s) => s.document)
 	const selectedPlaceId = useDocumentStore((s) => s.selectedPlaceId)
 	const selectPlace = useDocumentStore((s) => s.selectPlace)
-	const userHasInteracted = useRef(false)
-	const didFlyToUser = useRef(false)
-
-	const visiblePlaces = useMemo(() => listVisiblePlaces(document), [document])
 	const searchPreview = useDocumentStore((s) => s.searchPreview)
 	const toggleSearchSelection = useDocumentStore((s) => s.toggleSearchSelection)
+	const { markUserInteracted } = useFlyToUserOnce(mapRef, userLocation)
 
-	useEffect(() => {
-		if (
-			didFlyToUser.current ||
-			userHasInteracted.current ||
-			!mapRef.current ||
-			userLocation.latitude == null ||
-			userLocation.longitude == null
-		) {
-			return
-		}
-		didFlyToUser.current = true
-		mapRef.current.flyTo({
-			center: [userLocation.longitude, userLocation.latitude],
-			zoom: DEFAULT_ZOOM,
-			duration: 1000,
-		})
-	}, [userLocation.latitude, userLocation.longitude, mapRef])
+	const visiblePlaces = useMemo(() => listVisiblePlaces(document), [document])
 
 	return (
 		<div className="relative h-full w-full">
@@ -58,7 +40,7 @@ export function MapView({ mapRef, userLocation, onMoveEnd }: MapViewProps) {
 				attributionControl={false}
 				onClick={() => selectPlace(null)}
 				onMoveStart={(e) => {
-					if (e.originalEvent) userHasInteracted.current = true
+					if (e.originalEvent) markUserInteracted()
 				}}
 				onMoveEnd={onMoveEnd}
 				style={{ width: '100%', height: '100%' }}

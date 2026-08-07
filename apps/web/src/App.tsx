@@ -6,6 +6,7 @@ import { MapView } from '@/components/map/MapView'
 import { PlaceDetail } from '@/components/PlaceDetail'
 import { SearchPanel } from '@/components/search/SearchPanel'
 import { ToastStack } from '@/components/ToastStack'
+import { useFlyToSelectedPlace } from '@/hooks/useFlyToSelectedPlace'
 import { useLocation } from '@/hooks/useLocation'
 import { useDocumentStore } from '@/store/documentStore'
 
@@ -14,6 +15,7 @@ export function App() {
 	const hydrated = useDocumentStore((s) => s.hydrated)
 	const setHydrated = useDocumentStore((s) => s.setHydrated)
 	const userLocation = useLocation()
+	useFlyToSelectedPlace(mapRef)
 
 	useEffect(() => {
 		const unsub = useDocumentStore.persist.onFinishHydration(() => {

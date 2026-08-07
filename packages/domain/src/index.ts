@@ -19,6 +19,8 @@ export {
 	toggleLayerVisible,
 	ungroupLayer,
 } from './mutations'
+export type { DropTarget } from './resolveDropTarget'
+export { resolveDropTarget } from './resolveDropTarget'
 export type { TreeRow, VisiblePlace } from './selectors'
 export {
 	collectDescendantIds,

@@ -2,6 +2,7 @@ import type { MapRef } from 'react-map-gl'
 import type { LocationState } from '@/hooks/useLocation'
 import { cn } from '@/lib/cn'
 import { DEFAULT_ZOOM } from '@/lib/constants'
+import { flyToPoint } from '@/lib/mapCamera'
 
 type LocateButtonProps = {
 	mapRef: React.RefObject<MapRef | null>
@@ -20,11 +21,11 @@ export function LocateButton({ mapRef, userLocation, className }: LocateButtonPr
 
 	const handleClick = () => {
 		if (userLocation.latitude == null || userLocation.longitude == null) return
-		mapRef.current?.flyTo({
-			center: [userLocation.longitude, userLocation.latitude],
-			zoom: Math.max(mapRef.current.getZoom(), DEFAULT_ZOOM),
-			duration: 800,
-		})
+		flyToPoint(
+			mapRef,
+			{ lng: userLocation.longitude, lat: userLocation.latitude },
+			{ minZoom: DEFAULT_ZOOM, duration: 800 },
+		)
 	}
 
 	return (
