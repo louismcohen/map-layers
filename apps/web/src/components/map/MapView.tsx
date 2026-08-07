@@ -45,13 +45,14 @@ export function MapView({ mapRef, userLocation, onMoveEnd }: MapViewProps) {
 				onMoveEnd={onMoveEnd}
 				style={{ width: '100%', height: '100%' }}
 			>
-				{visiblePlaces.map(({ place, color }) => (
+				{visiblePlaces.map(({ place, color, maki }) => (
 					<PlaceMarker
 						key={place.id}
 						id={place.id}
 						latitude={place.coordinates.lat}
 						longitude={place.coordinates.lng}
 						color={color}
+						maki={maki}
 						selected={selectedPlaceId === place.id}
 						onClick={selectPlace}
 					/>
@@ -63,6 +64,7 @@ export function MapView({ mapRef, userLocation, onMoveEnd }: MapViewProps) {
 						latitude={result.coordinates.lat}
 						longitude={result.coordinates.lng}
 						color={searchPreview.color}
+						maki={result.maki}
 						selected={searchPreview.selectedMapboxIds.includes(result.mapboxId)}
 						onClick={toggleSearchSelection}
 					/>

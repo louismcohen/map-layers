@@ -34,6 +34,7 @@ export function LayersPanel({ mapRef }: LayersPanelProps) {
 	const renameNode = useDocumentStore((s) => s.renameNode)
 	const toggleLayerVisible = useDocumentStore((s) => s.toggleLayerVisible)
 	const setLayerColor = useDocumentStore((s) => s.setLayerColor)
+	const setLayerMaki = useDocumentStore((s) => s.setLayerMaki)
 	const setLayerCollapsed = useDocumentStore((s) => s.setLayerCollapsed)
 	const ungroupLayer = useDocumentStore((s) => s.ungroupLayer)
 	const deleteNodes = useDocumentStore((s) => s.deleteNodes)
@@ -44,6 +45,7 @@ export function LayersPanel({ mapRef }: LayersPanelProps) {
 	const [deleteId, setDeleteId] = useState<NodeId | null>(null)
 	const [menuId, setMenuId] = useState<NodeId | null>(null)
 	const [colorPickerId, setColorPickerId] = useState<NodeId | null>(null)
+	const [iconPickerId, setIconPickerId] = useState<NodeId | null>(null)
 	const [editingId, setEditingId] = useState<NodeId | null>(null)
 
 	const rows = useMemo(() => flattenTree(document), [document])
@@ -101,6 +103,7 @@ export function LayersPanel({ mapRef }: LayersPanelProps) {
 										editing={editingId === row.id}
 										menuOpen={menuId === row.id}
 										colorOpen={colorPickerId === row.id}
+										iconOpen={iconPickerId === row.id}
 										onSelect={() => {
 											setSelectedNodeIds([row.id])
 											if (row.node.kind === 'place') selectPlace(row.id)
@@ -114,17 +117,36 @@ export function LayersPanel({ mapRef }: LayersPanelProps) {
 										onStartEdit={() => {
 											setEditingId(row.id)
 											setMenuId(null)
+											setColorPickerId(null)
+											setIconPickerId(null)
 										}}
 										onCommitEdit={(name) => {
 											renameNode(row.id, name)
 											setEditingId(null)
 										}}
 										onCancelEdit={() => setEditingId(null)}
-										onToggleMenu={() => setMenuId((m) => (m === row.id ? null : row.id))}
-										onToggleColor={() => setColorPickerId((c) => (c === row.id ? null : row.id))}
+										onToggleMenu={() => {
+											setMenuId((m) => (m === row.id ? null : row.id))
+											setColorPickerId(null)
+											setIconPickerId(null)
+										}}
+										onToggleColor={() => {
+											setColorPickerId((c) => (c === row.id ? null : row.id))
+											setIconPickerId(null)
+											setMenuId(null)
+										}}
 										onPickColor={(color) => {
 											setLayerColor(row.id, color)
 											setColorPickerId(null)
+										}}
+										onToggleIcon={() => {
+											setIconPickerId((c) => (c === row.id ? null : row.id))
+											setColorPickerId(null)
+											setMenuId(null)
+										}}
+										onPickMaki={(maki) => {
+											setLayerMaki(row.id, maki)
+											setIconPickerId(null)
 										}}
 										onUngroup={() => {
 											ungroupLayer(row.id)

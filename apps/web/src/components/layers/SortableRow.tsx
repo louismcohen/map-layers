@@ -1,9 +1,11 @@
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import type { DocNode, NodeId } from '@map-layers/domain'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { MakiGlyph } from '@/components/icons/MakiGlyph'
 import { cn } from '@/lib/cn'
 import { COLOR_PALETTE } from '@/lib/constants'
+import { MAKI_ICON_NAMES } from '@/lib/makiIcon'
 
 export type SortableRowProps = {
 	node: DocNode
@@ -13,6 +15,7 @@ export type SortableRowProps = {
 	editing: boolean
 	menuOpen: boolean
 	colorOpen: boolean
+	iconOpen: boolean
 	onSelect: () => void
 	onToggleVisible: () => void
 	onToggleCollapsed: () => void
@@ -22,6 +25,8 @@ export type SortableRowProps = {
 	onToggleMenu: () => void
 	onToggleColor: () => void
 	onPickColor: (color: string) => void
+	onToggleIcon: () => void
+	onPickMaki: (maki: string | undefined) => void
 	onUngroup: () => void
 	onDelete: () => void
 	onFit: () => void
@@ -36,6 +41,7 @@ export function SortableRow({
 	editing,
 	menuOpen,
 	colorOpen,
+	iconOpen,
 	onSelect,
 	onToggleVisible,
 	onToggleCollapsed,
@@ -45,6 +51,8 @@ export function SortableRow({
 	onToggleMenu,
 	onToggleColor,
 	onPickColor,
+	onToggleIcon,
+	onPickMaki,
 	onUngroup,
 	onDelete,
 	onFit,
@@ -54,12 +62,25 @@ export function SortableRow({
 		id,
 	})
 	const [draft, setDraft] = useState(node.name)
+	const [iconFilter, setIconFilter] = useState('')
 
 	useEffect(() => {
 		if (editing) setDraft(node.name)
 	}, [node.name, editing])
 
+	useEffect(() => {
+		if (!iconOpen) setIconFilter('')
+	}, [iconOpen])
+
 	const isLayer = node.kind === 'layer'
+	const layerMaki = isLayer ? node.maki : undefined
+	const layerColor = isLayer ? node.color : undefined
+
+	const filteredIcons = useMemo(() => {
+		const q = iconFilter.trim().toLowerCase()
+		if (!q) return MAKI_ICON_NAMES
+		return MAKI_ICON_NAMES.filter((name) => name.includes(q))
+	}, [iconFilter])
 
 	return (
 		<li
@@ -128,6 +149,22 @@ export function SortableRow({
 					<span className="h-2 w-2 shrink-0 rounded-full bg-neutral-500" aria-hidden />
 				)}
 
+				{isLayer ? (
+					<button
+						type="button"
+						onClick={onToggleIcon}
+						className="flex h-4 w-4 shrink-0 items-center justify-center rounded border border-white/15 bg-neutral-950/60"
+						aria-label="Layer icon"
+						title={layerMaki ? `Icon: ${layerMaki}` : 'Set layer icon'}
+					>
+						<MakiGlyph
+							maki={layerMaki}
+							color={layerColor}
+							className="h-3 w-3"
+						/>
+					</button>
+				) : null}
+
 				{editing ? (
 					<input
 						value={draft}
@@ -175,6 +212,44 @@ export function SortableRow({
 							aria-label={color}
 						/>
 					))}
+				</div>
+			) : null}
+
+			{iconOpen && isLayer ? (
+				<div className="absolute top-8 left-16 z-20 w-56 rounded-md border border-neutral-700 bg-neutral-900 p-2 shadow-xl">
+					<input
+						value={iconFilter}
+						onChange={(e) => setIconFilter(e.target.value)}
+						placeholder="Filter icons…"
+						className="mb-2 w-full rounded border border-neutral-700 bg-neutral-950 px-2 py-1 text-[11px] text-neutral-100 outline-none placeholder:text-neutral-600 focus:border-neutral-500"
+					/>
+					<button
+						type="button"
+						onClick={() => onPickMaki(undefined)}
+						className={cn(
+							'mb-1 w-full rounded px-2 py-1 text-left text-[11px] text-neutral-300 hover:bg-neutral-800',
+							!layerMaki && 'bg-neutral-800',
+						)}
+					>
+						Auto (place icons)
+					</button>
+					<div className="grid max-h-40 grid-cols-6 gap-1 overflow-y-auto">
+						{filteredIcons.map((name) => (
+							<button
+								key={name}
+								type="button"
+								title={name}
+								aria-label={name}
+								onClick={() => onPickMaki(name)}
+								className={cn(
+									'flex h-7 w-7 items-center justify-center rounded border border-transparent hover:border-neutral-600 hover:bg-neutral-800',
+									layerMaki === name && 'border-neutral-400 bg-neutral-800',
+								)}
+							>
+								<MakiGlyph maki={name} color={layerColor} className="h-3.5 w-3.5" />
+							</button>
+						))}
+					</div>
 				</div>
 			) : null}
 

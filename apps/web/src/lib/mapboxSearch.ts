@@ -14,6 +14,7 @@ type ForwardResponse = {
 			full_address?: string
 			place_formatted?: string
 			feature_type?: string
+			maki?: string
 		}
 	}>
 }
@@ -55,6 +56,7 @@ export async function forwardSearch(params: {
 			name: feature.properties.name,
 			address: feature.properties.full_address ?? feature.properties.place_formatted,
 			featureType: feature.properties.feature_type,
+			maki: feature.properties.maki,
 			coordinates: { lng, lat },
 		})
 	}

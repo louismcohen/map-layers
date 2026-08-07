@@ -132,6 +132,16 @@ export function setLayerColor(doc: Document, id: NodeId, color: string): Documen
 	return next
 }
 
+/** Set or clear (`undefined`) the layer’s Maki icon override. */
+export function setLayerMaki(doc: Document, id: NodeId, maki: string | undefined): Document {
+	const next = cloneDoc(doc)
+	const layer = getLayer(next, id)
+	if (!layer) throw new Error(`Layer not found: ${id}`)
+	if (maki) layer.maki = maki
+	else delete layer.maki
+	return next
+}
+
 export function setLayerCollapsed(doc: Document, id: NodeId, collapsed: boolean): Document {
 	const next = cloneDoc(doc)
 	const layer = getLayer(next, id)
@@ -244,6 +254,7 @@ export function addPlaces(doc: Document, input: AddPlacesInput): AddPlacesResult
 			coordinates: draft.coordinates,
 			address: draft.address,
 			featureType: draft.featureType,
+			maki: draft.maki,
 			raw: draft.raw,
 		}
 		next.nodes[id] = place

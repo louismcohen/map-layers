@@ -1,7 +1,7 @@
 import { motion } from 'motion/react'
 import { memo } from 'react'
 import { Marker } from 'react-map-gl'
-import { LocationIcon } from '@/components/icons/LocationIcon'
+import { MakiGlyph } from '@/components/icons/MakiGlyph'
 
 type PlaceMarkerProps = {
 	id: string
@@ -9,6 +9,7 @@ type PlaceMarkerProps = {
 	longitude: number
 	color: string
 	selected: boolean
+	maki?: string
 	onClick: (id: string) => void
 }
 
@@ -18,6 +19,7 @@ function PlaceMarkerComponent({
 	longitude,
 	color,
 	selected,
+	maki,
 	onClick,
 }: PlaceMarkerProps) {
 	return (
@@ -53,7 +55,7 @@ function PlaceMarkerComponent({
 						bounce: selected ? 0.5 : 0.55,
 					}}
 				>
-					<LocationIcon fill={color} width={16} height={16} />
+					<MakiGlyph maki={maki} color={color} className="h-4 w-4" />
 				</motion.div>
 			</div>
 		</Marker>

@@ -8,6 +8,8 @@ export type PlaceNode = {
 	coordinates: { lng: number; lat: number }
 	address?: string
 	featureType?: string
+	/** Mapbox Maki icon name from Search Box (e.g. restaurant, cafe). */
+	maki?: string
 	raw?: unknown
 }
 
@@ -17,6 +19,8 @@ export type LayerNode = {
 	name: string
 	visible: boolean
 	color: string
+	/** Optional Maki icon; when set, overrides place pin glyphs under this layer. */
+	maki?: string
 	collapsed: boolean
 	children: NodeId[]
 }

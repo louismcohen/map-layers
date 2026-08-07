@@ -8,6 +8,7 @@ import {
 	renameNode as domainRenameNode,
 	setLayerCollapsed as domainSetLayerCollapsed,
 	setLayerColor as domainSetLayerColor,
+	setLayerMaki as domainSetLayerMaki,
 	setLayerVisible as domainSetLayerVisible,
 	ungroupLayer as domainUngroupLayer,
 	type NodeId,
@@ -68,6 +69,7 @@ type DocumentStore = {
 	renameNode: (id: NodeId, name: string) => void
 	toggleLayerVisible: (id: NodeId) => void
 	setLayerColor: (id: NodeId, color: string) => void
+	setLayerMaki: (id: NodeId, maki: string | undefined) => void
 	setLayerCollapsed: (id: NodeId, collapsed: boolean) => void
 	ungroupLayer: (id: NodeId) => void
 	deleteNodes: (ids: NodeId[]) => void
@@ -151,6 +153,9 @@ export const useDocumentStore = create<DocumentStore>()(
 			},
 			setLayerColor: (id, color) => {
 				setState({ document: domainSetLayerColor(getState().document, id, color) })
+			},
+			setLayerMaki: (id, maki) => {
+				setState({ document: domainSetLayerMaki(getState().document, id, maki) })
 			},
 			setLayerCollapsed: (id, collapsed) => {
 				setState({ document: domainSetLayerCollapsed(getState().document, id, collapsed) })

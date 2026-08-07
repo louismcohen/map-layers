@@ -3,7 +3,7 @@
 ## Status
 
 - Last updated: 2026-08-06
-- Implemented: living docs; monorepo; domain (+ `resolveDropTarget`); Zustand/IndexedDB; Mapbox (LA default + geolocation); layers panel; pins; Search Box with on-map preview pins (random color reused for new layers); fit bounds; modals/toasts; UI orchestration hooks (`usePlaceSearch`, `useFlyToSelectedPlace`, `useFlyToUserOnce`) + shared `mapCamera` helpers
+- Implemented: living docs; monorepo; domain (+ `resolveDropTarget`); Zustand/IndexedDB; Mapbox (LA default + geolocation); layers panel (color + **optional Maki icon**); pins with Maki glyphs (place `maki`, overridable by nearest ancestor layer `maki`); Search Box with on-map preview pins (random color reused for new layers); fit bounds; modals/toasts; UI orchestration hooks (`usePlaceSearch`, `useFlyToSelectedPlace`, `useFlyToUserOnce`) + shared `mapCamera` helpers
 - In progress: none
 - Next: optional polish (layer opacity, clustering, isochrones)
 - Deferred: see [Explicitly deferred](#explicitly-deferred) and [Future: isochrone / isodistance](#future-isochrone--isodistance-architecture-fit)
@@ -32,6 +32,7 @@ A solo, local-first web app: full-bleed Mapbox map + left layers panel. Users se
 | State | Zustand + persist to **IndexedDB** (`idb-keyval`) |
 | DnD | `@dnd-kit` for layer tree reorder/reparent |
 | Motion | `motion` (pin select / panel transitions) |
+| Pin glyphs | `@mapbox/maki` (from Search Box `maki`) |
 | Search | **Mapbox Search Box API** (see note below) |
 
 ### Search API note (important)
@@ -99,6 +100,7 @@ type PlaceNode = {
   coordinates: { lng: number; lat: number };
   address?: string;
   featureType?: string; // e.g. poi, address
+  maki?: string; // Search Box Maki icon name (e.g. restaurant, cafe)
   raw?: unknown; // trimmed Search Box payload if useful later
 };
 
@@ -108,6 +110,7 @@ type LayerNode = {
   name: string;
   visible: boolean; // own toggle (effective = AND ancestors)
   color: string; // hex; drives pins / future fills under this layer
+  maki?: string; // optional Maki icon; when set, overrides place pin glyphs under this layer
   collapsed: boolean; // UI-only, persisted for comfort
   children: NodeId[]; // ordered: layers and/or leaf content nodes
 };
@@ -126,6 +129,7 @@ type Document = {
 
 - **Visible:** node is shown iff every ancestor layer has `visible: true` (and for a leaf, its containing path is visible). Hidden parent ⇒ all descendants hidden on the map (Figma/Photoshop behavior).
 - **Color:** walk from leaf → parent layers; use the **nearest ancestor layer’s `color`**. Root-level places use `defaultPlaceColor`.
+- **Maki icon:** walk from leaf → parent layers; use the **nearest ancestor layer with `maki` set**. If none, use the place’s Search Box `maki` (UI falls back to `marker`). Nested layer icon overrides parent for its subtree only.
 - Nested layer with its own color overrides parent for its subtree only.
 - Same cascade applies later to GeoJSON fills/outlines (isochrones inherit layer color / opacity).
 
@@ -139,6 +143,7 @@ When creating a layer from search: **default name = the search query string** (t
 - `renameNode(id, name)`
 - `setLayerVisible(id, visible)` / `toggleLayerVisible(id)`
 - `setLayerColor(id, color)`
+- `setLayerMaki(id, maki | undefined)` — optional pin glyph override for the layer’s subtree
 - `moveNodes({ ids, targetParentId | root, index })` — reorder + reparent
 - `resolveDropTarget(doc, activeId, overId)` — map DnD over-target to `{ parentId, index }` for `moveNodes`
 - `ungroupLayer(id)` — splice layer’s `children` into parent at the layer’s index; delete the layer node
@@ -188,8 +193,8 @@ Persist middleware → IndexedDB key `map-layers:v1`. No account.
 Port patterns from `~/Developer/yelp-combinator-frontend` (not a hard dependency — copy/adapt):
 
 - Map shell like `MapRender.tsx`: same style URL + token env
-- Pins like `IconMarker`: 32px circle, border, shadow, selected spring scale — but **`color` prop from effective layer color**, not Yelp category
-- Use a single generic location glyph (e.g. port `Location` icon) rather than the full category icon set
+- Pins like `IconMarker`: 32px circle, border, shadow, selected spring scale — **`color` prop from effective layer color**
+- Inner glyph = `@mapbox/maki` SVG from effective maki (`getEffectiveMaki`: nearest ancestor layer `maki`, else place `maki`, default `marker`); inlined and tinted with layer color via `currentColor`
 - Optional: Supercluster + `ClusterMarker` if pin density gets high; start without clustering, add if needed
 - Click pin → select place in tree + lightweight detail popover (name, address, “reveal in layers”)
 
@@ -209,7 +214,7 @@ Layer groups stay DOM-tree UI only; they never become Mapbox style layers. Conto
 `apps/web/src/lib/mapboxSearch.ts`:
 
 1. Forward (debounced) with `proximity` = map center and `bbox` = current viewport (`minLon,minLat,maxLon,maxLat`)
-2. Normalize features to `PlaceDraft` (coordinates in one request; no Suggest→Retrieve session needed for forward)
+2. Normalize features to `PlaceDraft` (coordinates + optional `maki` in one request; no Suggest→Retrieve session needed for forward)
 3. Multi-select in results UI; add selected drafts into the tree
 
 ---
@@ -242,6 +247,7 @@ Each row:
 - Expand/collapse (layers only)
 - Visibility eye toggle
 - Color swatch (layers only) → popover palette (seed from yelp `ColorPalette.ts`)
+- Maki icon button (layers only) → filterable icon grid; **Auto** clears override so place icons show
 - Name (inline rename on double-click / Enter)
 - Context menu: New sublayer, Ungroup, Delete, Fit map to contents
 
@@ -271,6 +277,7 @@ Places appear as leaf rows under their layer (indent). Selecting a place flies t
 - Nested layers + root-level places
 - Show/hide with ancestor cascade
 - Per-layer color → pin color
+- Optional per-layer Maki icon → overrides descendant pin glyphs (else place Search Box `maki`)
 - Create / rename / delete / ungroup / reorder / reparent
 - Search Box → add one / many / all
 - Local persistence (IndexedDB)

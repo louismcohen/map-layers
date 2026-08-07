@@ -50,6 +50,9 @@ importers:
       '@map-layers/domain':
         specifier: workspace:*
         version: link:../../packages/domain
+      '@mapbox/maki':
+        specifier: ^8.2.0
+        version: 8.2.0
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -598,6 +601,9 @@ packages:
   '@mapbox/jsonlint-lines-primitives@2.0.3':
     resolution: {integrity: sha512-0SElaV0uMxEnxzBhhX9WTuPyUeMsAN/SS0i16tjuba4/mio63MG9khjC1a0JAiPGXAwvwm4UfHJURCN7nyudQg==}
     engines: {node: '>= 22'}
+
+  '@mapbox/maki@8.2.0':
+    resolution: {integrity: sha512-sTd/fEBfkBSidVwwtbijHZYJC7NhqvgLrXzSRHgxbLi52x4IciyTVUufqvJr8oIChw7hT7MIBHu5fyqrrpfFdA==}
 
   '@mapbox/unitbezier@0.0.1':
     resolution: {integrity: sha512-nMkuDXFv60aBr9soUG5q+GvZYL+2KZHVvsqFCzqnkGEf46U2fvmytHaEVc1/YZbiLn8X+eR3QzX1+dwDO1lxlw==}
@@ -3011,6 +3017,8 @@ snapshots:
       '@jridgewell/sourcemap-codec': 1.5.5
 
   '@mapbox/jsonlint-lines-primitives@2.0.3': {}
+
+  '@mapbox/maki@8.2.0': {}
 
   '@mapbox/unitbezier@0.0.1': {}
 

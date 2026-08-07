@@ -7,11 +7,12 @@ import {
 	moveNodes,
 	renameNode,
 	setLayerColor,
+	setLayerMaki,
 	setLayerVisible,
 	ungroupLayer,
 } from './mutations'
 import { resolveDropTarget } from './resolveDropTarget'
-import { getEffectiveColor, isEffectivelyVisible, listVisiblePlaces } from './selectors'
+import { getEffectiveColor, getEffectiveMaki, isEffectivelyVisible, listVisiblePlaces } from './selectors'
 
 describe('domain tree', () => {
 	it('creates layers and places with effective color/visibility', () => {
@@ -44,6 +45,35 @@ describe('domain tree', () => {
 		doc = setLayerVisible(doc, layerId, true)
 		doc = setLayerColor(doc, layerId, '#136f63')
 		expect(getEffectiveColor(doc, placeId)).toBe('#136f63')
+	})
+
+	it('cascades layer maki over place maki', () => {
+		let doc = createEmptyDocument()
+		const { doc: withLayer, layerId } = createLayer(doc, { name: 'Food' })
+		doc = withLayer
+
+		const added = addPlaces(doc, {
+			targetParentId: layerId,
+			places: [
+				{
+					name: 'Cafe',
+					mapboxId: 'poi.maki',
+					coordinates: { lng: 0, lat: 0 },
+					maki: 'cafe',
+				},
+			],
+		})
+		doc = added.doc
+		const placeId = added.addedIds[0]
+		if (!placeId) throw new Error('missing place')
+
+		expect(getEffectiveMaki(doc, placeId)).toBe('cafe')
+
+		doc = setLayerMaki(doc, layerId, 'restaurant')
+		expect(getEffectiveMaki(doc, placeId)).toBe('restaurant')
+
+		doc = setLayerMaki(doc, layerId, undefined)
+		expect(getEffectiveMaki(doc, placeId)).toBe('cafe')
 	})
 
 	it('nests layers and cascades visibility', () => {
