@@ -3,7 +3,7 @@
 ## Status
 
 - Last updated: 2026-08-06
-- Implemented: living docs; monorepo; domain (+ `resolveDropTarget`); Zustand/IndexedDB; Mapbox (LA default + geolocation); layers panel (color + **optional Maki icon**); pins with Maki glyphs (place `maki`, overridable by nearest ancestor layer `maki`); Search Box with on-map preview pins (random color reused for new layers); fit bounds; modals/toasts; UI orchestration hooks (`usePlaceSearch`, `useFlyToSelectedPlace`, `useFlyToUserOnce`) + shared `mapCamera` helpers; **shadcn/ui (base-rhea / taupe, always light)** for chrome + controls
+- Implemented: living docs; monorepo; domain (+ `resolveDropTarget`); Zustand/IndexedDB; Mapbox (LA default + geolocation); layers panel (color + **optional Maki icon**; Heroicons for drag / chevron expand / eye visibility); pins with Maki glyphs (place `maki`, overridable by nearest ancestor layer `maki`); Search Box with on-map preview pins (random color reused for new layers); fit bounds; modals/toasts; UI orchestration hooks (`usePlaceSearch`, `useFlyToSelectedPlace`, `useFlyToUserOnce`) + shared `mapCamera` helpers; **shadcn/ui (base-rhea / taupe, always light)** for chrome + controls
 - In progress: none
 - Next: optional polish (layer opacity, clustering, isochrones)
 - Deferred: see [Explicitly deferred](#explicitly-deferred) and [Future: isochrone / isodistance](#future-isochrone--isodistance-architecture-fit)
@@ -247,13 +247,13 @@ Layer groups stay DOM-tree UI only; they never become Mapbox style layers. Conto
 
 Each row:
 
-- Drag handle
-- Expand/collapse (layers only)
-- Visibility eye toggle
+- Drag handle (`Bars2Icon`)
+- Expand/collapse (`ChevronRightIcon`, CSS `rotate-90` when open; layers only)
+- Visibility toggle (`EyeIcon` / `EyeSlashIcon`; layers only)
 - Color swatch (layers only) → popover palette (seed from yelp `ColorPalette.ts`)
 - Maki icon button (layers only) → filterable icon grid; **Auto** clears override so place icons show
 - Name (inline rename on double-click / Enter)
-- Context menu: New sublayer, Ungroup, Delete, Fit map to contents
+- Context menu (`EllipsisVerticalIcon`): New sublayer, Ungroup, Delete, Fit map to contents
 
 Behaviors:
 

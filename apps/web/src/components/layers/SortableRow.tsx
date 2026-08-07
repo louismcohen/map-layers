@@ -1,5 +1,12 @@
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import {
+	Bars2Icon,
+	ChevronRightIcon,
+	EllipsisVerticalIcon,
+	EyeIcon,
+	EyeSlashIcon,
+} from '@heroicons/react/24/outline'
 import type { DocNode, NodeId } from '@map-layers/domain'
 import { useEffect, useMemo, useState } from 'react'
 import { MakiGlyph } from '@/components/icons/MakiGlyph'
@@ -108,25 +115,32 @@ export function SortableRow({
 			<div className="flex items-center gap-1 px-1 py-1">
 				<button
 					type="button"
-					className="cursor-grab px-0.5 text-[10px] text-muted-foreground hover:text-foreground active:cursor-grabbing"
+					className="flex h-5 w-5 shrink-0 cursor-grab items-center justify-center text-muted-foreground hover:text-foreground active:cursor-grabbing"
 					aria-label="Drag"
 					{...attributes}
 					{...listeners}
 				>
-					::
+					<Bars2Icon className="h-3.5 w-3.5" aria-hidden />
 				</button>
 
 				{isLayer ? (
 					<button
 						type="button"
-						className="w-4 text-[10px] text-muted-foreground"
+						className="flex h-5 w-5 shrink-0 items-center justify-center text-muted-foreground hover:text-foreground"
 						onClick={onToggleCollapsed}
 						aria-label={node.collapsed ? 'Expand' : 'Collapse'}
+						aria-expanded={!node.collapsed}
 					>
-						{node.collapsed ? '>' : 'v'}
+						<ChevronRightIcon
+							className={cn(
+								'h-3.5 w-3.5 transition-transform duration-200 ease-out',
+								!node.collapsed && 'rotate-90',
+							)}
+							aria-hidden
+						/>
 					</button>
 				) : (
-					<span className="w-4" />
+					<span className="h-5 w-5 shrink-0" />
 				)}
 
 				{isLayer ? (
@@ -134,16 +148,23 @@ export function SortableRow({
 						type="button"
 						onClick={onToggleVisible}
 						className={cn(
-							'w-6 rounded text-[10px] font-medium',
-							node.visible ? 'text-foreground' : 'text-muted-foreground line-through',
+							'flex h-5 w-5 shrink-0 items-center justify-center rounded',
+							node.visible
+								? 'text-foreground hover:text-foreground'
+								: 'text-muted-foreground hover:text-foreground',
 						)}
 						aria-label={node.visible ? 'Hide layer' : 'Show layer'}
+						aria-pressed={node.visible}
 						title={node.visible ? 'Hide' : 'Show'}
 					>
-						{node.visible ? 'on' : 'off'}
+						{node.visible ? (
+							<EyeIcon className="h-3.5 w-3.5" aria-hidden />
+						) : (
+							<EyeSlashIcon className="h-3.5 w-3.5" aria-hidden />
+						)}
 					</button>
 				) : (
-					<span className="w-6" />
+					<span className="h-5 w-5 shrink-0" />
 				)}
 
 				{isLayer ? (
@@ -253,7 +274,7 @@ export function SortableRow({
 								className="opacity-0 group-hover:opacity-100"
 								aria-label="More"
 							>
-								...
+								<EllipsisVerticalIcon className="h-3.5 w-3.5" aria-hidden />
 							</Button>
 						}
 					/>
