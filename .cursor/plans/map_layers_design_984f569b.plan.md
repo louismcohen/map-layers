@@ -3,32 +3,32 @@ name: Map Layers Design
 overview: Greenfield pnpm monorepo for a solo, local-first Mapbox app with a Figma-like nested layer tree, viewport-biased place search, and pins colored by layer — reusing map style and pin chrome from yelp-combinator-frontend.
 todos:
     - id: scaffold
-      content: 'Scaffold monorepo + seed docs/ARCHITECTURE.md, AGENTS.md, and always-apply architecture-doc rule'
-      status: pending
+      content: Scaffold monorepo + seed docs/ARCHITECTURE.md, AGENTS.md, and always-apply architecture-doc rule
+      status: completed
     - id: living-docs
-      content: 'Seed in-repo living docs (ARCHITECTURE, AGENTS, architecture-doc rule)'
+      content: Seed in-repo living docs (ARCHITECTURE, AGENTS, architecture-doc rule)
       status: completed
     - id: domain
       content: Implement Document/Layer/Place model, tree mutations, effective visibility/color selectors + tests
-      status: pending
+      status: completed
     - id: store
       content: Zustand document store with IndexedDB persistence
-      status: pending
+      status: completed
     - id: map-shell
       content: Mapbox map with yelp style URL, token, basic controls
-      status: pending
+      status: completed
     - id: layers-panel
       content: 'Left layers panel: tree, eye toggle, color, create/rename/delete/ungroup, dnd'
-      status: pending
+      status: completed
     - id: pins
       content: Adapt IconMarker/Cluster patterns; pins use effective layer color; selection sync
-      status: pending
+      status: completed
     - id: search
       content: Mapbox Search Box client + multi-select add to top/layer/new layer
-      status: pending
+      status: completed
     - id: polish
       content: Fit bounds, confirm dialogs, empty states, rename UX
-      status: pending
+      status: completed
 isProject: false
 ---
 
@@ -201,9 +201,9 @@ Only **effectively visible** places render as markers.
 
 **Render split (v1 implements points only; polygons reserved):**
 
-| Content kind | Mapbox mechanism |
-|--------------|------------------|
-| `place` (points) | `react-map-gl` HTML `<Marker>` (current plan) |
+| Content kind                              | Mapbox mechanism                                           |
+| ----------------------------------------- | ---------------------------------------------------------- |
+| `place` (points)                          | `react-map-gl` HTML `<Marker>` (current plan)              |
 | Future isochrone / isodistance (polygons) | `Source` + `Layer` (`fill` / `line`) fed by stored GeoJSON |
 
 Layer groups stay DOM-tree UI only; they never become Mapbox style layers. Contours hang off the same tree as leaves and paint via GL sources keyed by node id.
@@ -303,13 +303,13 @@ Places appear as leaf rows under their layer (indent). Selecting a place flies t
 
 ```ts
 type IsochroneNode = {
-  id: NodeId;
-  kind: 'isochrone'; // or 'isodistance'
-  name: string;
-  center: { lng: number; lat: number };
-  profile: 'walking' | 'cycling' | 'driving';
-  contours: number[];       // minutes or meters
-  geojson: GeoJSON.FeatureCollection; // from Mapbox Isochrone API
+    id: NodeId;
+    kind: 'isochrone'; // or 'isodistance'
+    name: string;
+    center: { lng: number; lat: number };
+    profile: 'walking' | 'cycling' | 'driving';
+    contours: number[]; // minutes or meters
+    geojson: GeoJSON.FeatureCollection; // from Mapbox Isochrone API
 };
 ```
 
@@ -368,11 +368,11 @@ This Cursor plan is secondary; if it diverges, Architecture wins.
 
 ### Supporting pointers
 
-| File | Role |
-|------|------|
-| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Canonical living design + current status |
-| [`AGENTS.md`](AGENTS.md) | Short entrypoint: read/update Architecture before/after work |
-| [`.cursor/rules/architecture-doc.mdc`](.cursor/rules/architecture-doc.mdc) | `alwaysApply: true` rule that enforces the habit |
+| File                                                                       | Role                                                         |
+| -------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)                             | Canonical living design + current status                     |
+| [`AGENTS.md`](AGENTS.md)                                                   | Short entrypoint: read/update Architecture before/after work |
+| [`.cursor/rules/architecture-doc.mdc`](.cursor/rules/architecture-doc.mdc) | `alwaysApply: true` rule that enforces the habit             |
 
 ### Agent rule (always apply)
 
@@ -388,6 +388,7 @@ Agents must:
 
 ```markdown
 ## Status
+
 - Last updated: YYYY-MM-DD
 - Implemented: …
 - In progress: …

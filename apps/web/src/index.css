@@ -1,0 +1,36 @@
+@import "tailwindcss";
+@import "mapbox-gl/dist/mapbox-gl.css";
+
+html,
+body,
+#root {
+	height: 100%;
+	margin: 0;
+	overflow: hidden;
+	background: #262626;
+	color: #fafafa;
+	font-family: "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+}
+
+.mapboxgl-ctrl-attrib {
+	display: none;
+}
+
+@keyframes popIn {
+	0% {
+		transform: scale(0.5);
+		opacity: 0;
+	}
+	75% {
+		transform: scale(1.15);
+	}
+	100% {
+		transform: scale(1);
+		opacity: 1;
+	}
+}
+
+.pop-in {
+	opacity: 0;
+	animation: popIn 0.3s ease-in-out forwards var(--delay-time, 0s);
+}

@@ -3,9 +3,9 @@
 ## Status
 
 - Last updated: 2026-08-06
-- Implemented: in-repo living docs (`docs/ARCHITECTURE.md`, `AGENTS.md`, `.cursor/rules/architecture-doc.mdc`)
+- Implemented: living docs; pnpm/turbo monorepo; `@map-layers/domain` (tree, visibility/color, mutations + tests); Zustand + IndexedDB store; Mapbox map (custom style); layers panel (create/rename/delete/ungroup/reorder/color/visibility); place pins; Search Box add flow; fit bounds; modals/toasts
 - In progress: none
-- Next: monorepo scaffold (pnpm + turbo + `apps/web` + `packages/domain` + Biome + Tailwind v4)
+- Next: optional polish (layer opacity, clustering, isochrones)
 - Deferred: see [Explicitly deferred](#explicitly-deferred) and [Future: isochrone / isodistance](#future-isochrone--isodistance-architecture-fit)
 
 ---
