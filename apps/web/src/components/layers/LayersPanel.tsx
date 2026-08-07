@@ -45,8 +45,7 @@ export function LayersPanel({ mapRef }: LayersPanelProps) {
 	const [sublayerParentId, setSublayerParentId] = useState<NodeId | null>(null)
 	const [deleteId, setDeleteId] = useState<NodeId | null>(null)
 	const [menuId, setMenuId] = useState<NodeId | null>(null)
-	const [colorPickerId, setColorPickerId] = useState<NodeId | null>(null)
-	const [iconPickerId, setIconPickerId] = useState<NodeId | null>(null)
+	const [stylePickerId, setStylePickerId] = useState<NodeId | null>(null)
 	const [editingId, setEditingId] = useState<NodeId | null>(null)
 
 	const rows = useMemo(() => flattenTree(document), [document])
@@ -99,8 +98,7 @@ export function LayersPanel({ mapRef }: LayersPanelProps) {
 										selected={selectedNodeIds.includes(row.id) || selectedPlaceId === row.id}
 										editing={editingId === row.id}
 										menuOpen={menuId === row.id}
-										colorOpen={colorPickerId === row.id}
-										iconOpen={iconPickerId === row.id}
+										styleOpen={stylePickerId === row.id}
 										onSelect={() => {
 											setSelectedNodeIds([row.id])
 											if (row.node.kind === 'place') selectPlace(row.id)
@@ -114,8 +112,7 @@ export function LayersPanel({ mapRef }: LayersPanelProps) {
 										onStartEdit={() => {
 											setEditingId(row.id)
 											setMenuId(null)
-											setColorPickerId(null)
-											setIconPickerId(null)
+											setStylePickerId(null)
 										}}
 										onCommitEdit={(name) => {
 											renameNode(row.id, name)
@@ -124,32 +121,17 @@ export function LayersPanel({ mapRef }: LayersPanelProps) {
 										onCancelEdit={() => setEditingId(null)}
 										onMenuOpenChange={(open) => {
 											setMenuId(open ? row.id : null)
-											if (open) {
-												setColorPickerId(null)
-												setIconPickerId(null)
-											}
+											if (open) setStylePickerId(null)
 										}}
-										onColorOpenChange={(open) => {
-											setColorPickerId(open ? row.id : null)
-											if (open) {
-												setIconPickerId(null)
-												setMenuId(null)
-											}
+										onStyleOpenChange={(open) => {
+											setStylePickerId(open ? row.id : null)
+											if (open) setMenuId(null)
 										}}
 										onPickColor={(color) => {
 											setLayerColor(row.id, color)
-											setColorPickerId(null)
-										}}
-										onIconOpenChange={(open) => {
-											setIconPickerId(open ? row.id : null)
-											if (open) {
-												setColorPickerId(null)
-												setMenuId(null)
-											}
 										}}
 										onPickMaki={(maki) => {
 											setLayerMaki(row.id, maki)
-											setIconPickerId(null)
 										}}
 										onUngroup={() => {
 											ungroupLayer(row.id)

@@ -3,7 +3,6 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { MapRef } from 'react-map-gl'
 import { useDebouncedCallback } from 'use-debounce'
 import { forwardSearch } from '@/lib/mapboxSearch'
-import { fitToCoordinates } from '@/lib/mapCamera'
 import { type AddTarget, useDocumentStore } from '@/store/documentStore'
 
 export type SearchDestination =
@@ -116,14 +115,6 @@ export function usePlaceSearch(mapRef: React.RefObject<MapRef | null>) {
 			const addedIds = addPlaces(drafts, target)
 			setSearchPreview(null)
 			if (addedIds[0]) selectPlace(addedIds[0])
-
-			const doc = useDocumentStore.getState().document
-			const coords = addedIds
-				.map((id) => doc.nodes[id])
-				.filter((n): n is Extract<typeof n, { kind: 'place' }> => n?.kind === 'place')
-				.map((p) => p.coordinates)
-
-			fitToCoordinates(mapRef, coords, { padding: 80, duration: 700 })
 			setQuery('')
 		} catch (err) {
 			pushToast(err instanceof Error ? err.message : 'Could not add places')

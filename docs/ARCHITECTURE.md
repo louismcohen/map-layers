@@ -3,7 +3,7 @@
 ## Status
 
 - Last updated: 2026-08-06
-- Implemented: living docs; monorepo; domain (+ `resolveDropTarget`); Zustand/IndexedDB; Mapbox (LA default + geolocation); layers panel (color + **optional Maki icon**; Heroicons for drag / chevron expand / eye visibility); pins with Maki glyphs (place `maki`, overridable by nearest ancestor layer `maki`); Search Box with on-map preview pins (random color reused for new layers); fit bounds; modals/toasts; UI orchestration hooks (`usePlaceSearch`, `useFlyToSelectedPlace`, `useFlyToUserOnce`) + shared `mapCamera` helpers; **shadcn/ui (base-rhea / taupe, always light)** for chrome + controls
+- Implemented: living docs; monorepo; domain (+ `resolveDropTarget`); Zustand/IndexedDB; Mapbox (LA default + geolocation); layers panel (**combined color + optional Maki icon** picker; Heroicons for drag / chevron expand / eye visibility); pins with Maki glyphs (place `maki`, overridable by nearest ancestor layer `maki`); Search Box with on-map preview pins (random color reused for new layers); fit bounds; modals/toasts; UI orchestration hooks (`usePlaceSearch`, `useFlyToUserOnce`) + shared `mapCamera` helpers; **shadcn/ui (base-rhea / taupe, always light)** for chrome + controls
 - In progress: none
 - Next: optional polish (layer opacity, clustering, isochrones)
 - Deferred: see [Explicitly deferred](#explicitly-deferred) and [Future: isochrone / isodistance](#future-isochrone--isodistance-architecture-fit)
@@ -250,8 +250,7 @@ Each row:
 - Drag handle (`Bars2Icon`)
 - Expand/collapse (`ChevronRightIcon`, CSS `rotate-90` when open; layers only)
 - Visibility toggle (`EyeIcon` / `EyeSlashIcon`; layers only)
-- Color swatch (layers only) → popover palette (seed from yelp `ColorPalette.ts`)
-- Maki icon button (layers only) → filterable icon grid; **Auto** clears override so place icons show
+- Style control (layers only): colored Maki glyph → one popover with palette + filterable icon grid; **Auto** clears icon override so place icons show (`LayerStylePicker`)
 - Name (inline rename on double-click / Enter)
 - Context menu (`EllipsisVerticalIcon`): New sublayer, Ungroup, Delete, Fit map to contents
 
@@ -263,16 +262,16 @@ Behaviors:
 | Reorder / nest | Drag onto layer or between rows; drop on root allowed |
 | Ungroup | Children move to parent (or root); layer removed |
 | Hide layer | Eye off; descendants disappear from map; nested eyes remain but ineffective until parent shown |
-| Color | Sets layer color; all descendant places’ pins update immediately |
+| Color / icon | Combined style picker; color updates pins immediately; optional Maki overrides descendant glyphs |
 
-Places appear as leaf rows under their layer (indent). Selecting a place flies the map to it.
+Places appear as leaf rows under their layer (indent): drag handle + name + menu only (no chevron/eye/style picker). Selecting a place highlights it and opens detail — **camera stays put** (use Fit to map from the row menu to frame).
 
 ### Search → add flow
 
 1. User types query in Search section (or Cmd-K later). Forward search uses map **center** as `proximity` and the current viewport as `bbox` (Mapbox Search Box hard-filters to that box).
 2. Results list with checkboxes; “Select all”. Preview pins appear on the map; **camera stays put** (no fit/fly on results).
 3. Destination control: **Top level** | **Existing layer…** | **New layer** (name prefilled with query).
-4. Confirm **Add** → places inserted; if New layer, create layer then add places as children; then fly/fit bounds to the added set.
+4. Confirm **Add** → places inserted; if New layer, create layer then add places as children; **camera stays put** (use Fit to map from the row menu to frame).
 
 ---
 
