@@ -1,3 +1,4 @@
+import { Button } from '@/components/ui/button'
 import { useDocumentStore } from '@/store/documentStore'
 
 export function PlaceDetail() {
@@ -13,20 +14,16 @@ export function PlaceDetail() {
 	if (place?.kind !== 'place') return null
 
 	return (
-		<div className="absolute right-4 bottom-16 left-4 z-20 mx-auto max-w-md rounded-xl border border-neutral-700/80 bg-neutral-900/95 p-4 shadow-2xl backdrop-blur">
+		<div className="absolute right-4 bottom-16 left-4 z-20 mx-auto max-w-md rounded-xl border border-border bg-card/95 p-4 text-card-foreground shadow-2xl backdrop-blur">
 			<div className="mb-1 flex items-start justify-between gap-3">
-				<h2 className="text-sm font-semibold text-neutral-50">{place.name}</h2>
-				<button
-					type="button"
-					onClick={() => selectPlace(null)}
-					className="text-xs text-neutral-400 hover:text-neutral-200"
-				>
+				<h2 className="font-heading text-sm font-semibold">{place.name}</h2>
+				<Button type="button" variant="ghost" size="xs" onClick={() => selectPlace(null)}>
 					Close
-				</button>
+				</Button>
 			</div>
-			{place.address ? <p className="text-xs text-neutral-400">{place.address}</p> : null}
+			{place.address ? <p className="text-xs text-muted-foreground">{place.address}</p> : null}
 			{place.featureType ? (
-				<p className="mt-2 text-[11px] tracking-wide text-neutral-500 uppercase">
+				<p className="mt-2 text-[11px] tracking-wide text-muted-foreground uppercase">
 					{place.featureType}
 				</p>
 			) : null}

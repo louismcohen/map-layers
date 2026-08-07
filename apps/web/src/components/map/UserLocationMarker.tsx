@@ -18,8 +18,8 @@ export function UserLocationMarker({ userLocation }: UserLocationMarkerProps) {
 	return (
 		<Marker latitude={userLocation.latitude} longitude={userLocation.longitude}>
 			<div className="pop-in">
-				<div className="flex h-6 w-6 rounded-full border border-neutral-950/15 shadow">
-					<div className="h-full w-full rounded-full border-[3px] border-neutral-50 bg-blue-500 shadow-md" />
+				<div className="flex h-6 w-6 rounded-full border border-foreground/15 shadow">
+					<div className="h-full w-full rounded-full border-[3px] border-background bg-blue-500 shadow-md" />
 				</div>
 			</div>
 		</Marker>

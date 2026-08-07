@@ -17,6 +17,7 @@ import { useMemo, useState } from 'react'
 import type { MapRef } from 'react-map-gl'
 import { SortableRow } from '@/components/layers/SortableRow'
 import { ConfirmModal, PromptModal } from '@/components/modals'
+import { Button } from '@/components/ui/button'
 import { fitToCoordinates } from '@/lib/mapCamera'
 import { useDocumentStore } from '@/store/documentStore'
 
@@ -73,20 +74,16 @@ export function LayersPanel({ mapRef }: LayersPanelProps) {
 
 	return (
 		<div className="flex h-full min-h-0 flex-col">
-			<div className="flex items-center justify-between gap-2 border-b border-neutral-800 px-3 py-2">
-				<h1 className="text-sm font-semibold tracking-wide text-neutral-100">Layers</h1>
-				<button
-					type="button"
-					onClick={() => setCreateOpen(true)}
-					className="rounded-md bg-neutral-100 px-2 py-1 text-xs font-medium text-neutral-900 hover:bg-white"
-				>
+			<div className="flex items-center justify-between gap-2 border-b border-sidebar-border px-3 py-2">
+				<h1 className="font-heading text-sm font-semibold tracking-wide">Layers</h1>
+				<Button type="button" size="xs" onClick={() => setCreateOpen(true)}>
 					+ Layer
-				</button>
+				</Button>
 			</div>
 
 			<div className="min-h-0 flex-1 overflow-y-auto px-1 py-1">
 				{rows.length === 0 ? (
-					<p className="px-3 py-6 text-center text-xs text-neutral-500">
+					<p className="px-3 py-6 text-center text-xs text-muted-foreground">
 						No layers yet. Create a layer or search for places.
 					</p>
 				) : (
@@ -125,24 +122,30 @@ export function LayersPanel({ mapRef }: LayersPanelProps) {
 											setEditingId(null)
 										}}
 										onCancelEdit={() => setEditingId(null)}
-										onToggleMenu={() => {
-											setMenuId((m) => (m === row.id ? null : row.id))
-											setColorPickerId(null)
-											setIconPickerId(null)
+										onMenuOpenChange={(open) => {
+											setMenuId(open ? row.id : null)
+											if (open) {
+												setColorPickerId(null)
+												setIconPickerId(null)
+											}
 										}}
-										onToggleColor={() => {
-											setColorPickerId((c) => (c === row.id ? null : row.id))
-											setIconPickerId(null)
-											setMenuId(null)
+										onColorOpenChange={(open) => {
+											setColorPickerId(open ? row.id : null)
+											if (open) {
+												setIconPickerId(null)
+												setMenuId(null)
+											}
 										}}
 										onPickColor={(color) => {
 											setLayerColor(row.id, color)
 											setColorPickerId(null)
 										}}
-										onToggleIcon={() => {
-											setIconPickerId((c) => (c === row.id ? null : row.id))
-											setColorPickerId(null)
-											setMenuId(null)
+										onIconOpenChange={(open) => {
+											setIconPickerId(open ? row.id : null)
+											if (open) {
+												setColorPickerId(null)
+												setMenuId(null)
+											}
 										}}
 										onPickMaki={(maki) => {
 											setLayerMaki(row.id, maki)

@@ -13,9 +13,6 @@ body,
 	height: 100%;
 	margin: 0;
 	overflow: hidden;
-	background: #262626;
-	color: #fafafa;
-	font-family: "Segoe UI", ui-sans-serif, system-ui, sans-serif;
 }
 
 .mapboxgl-ctrl-attrib {

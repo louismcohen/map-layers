@@ -3,7 +3,7 @@
 ## Status
 
 - Last updated: 2026-08-06
-- Implemented: living docs; monorepo; domain (+ `resolveDropTarget`); Zustand/IndexedDB; Mapbox (LA default + geolocation); layers panel (color + **optional Maki icon**); pins with Maki glyphs (place `maki`, overridable by nearest ancestor layer `maki`); Search Box with on-map preview pins (random color reused for new layers); fit bounds; modals/toasts; UI orchestration hooks (`usePlaceSearch`, `useFlyToSelectedPlace`, `useFlyToUserOnce`) + shared `mapCamera` helpers
+- Implemented: living docs; monorepo; domain (+ `resolveDropTarget`); Zustand/IndexedDB; Mapbox (LA default + geolocation); layers panel (color + **optional Maki icon**); pins with Maki glyphs (place `maki`, overridable by nearest ancestor layer `maki`); Search Box with on-map preview pins (random color reused for new layers); fit bounds; modals/toasts; UI orchestration hooks (`usePlaceSearch`, `useFlyToSelectedPlace`, `useFlyToUserOnce`) + shared `mapCamera` helpers; **shadcn/ui (base-rhea / taupe, always light)** for chrome + controls
 - In progress: none
 - Next: optional polish (layer opacity, clustering, isochrones)
 - Deferred: see [Explicitly deferred](#explicitly-deferred) and [Future: isochrone / isodistance](#future-isochrone--isodistance-architecture-fit)
@@ -25,6 +25,7 @@ A solo, local-first web app: full-bleed Mapbox map + left layers panel. Users se
 | Monorepo | **pnpm workspaces + Turborepo** |
 | App | React 19 + Vite + TypeScript |
 | CSS | Tailwind CSS v4 (`@tailwindcss/vite`) |
+| UI | **shadcn/ui** (CLI v4, style **base-rhea**, base color **taupe**, always light `:root` tokens); primitives under `apps/web/src/components/ui` |
 | Lint/format | Biome (root config) |
 | Map | `mapbox-gl` + `react-map-gl` |
 | Map style | `mapbox://styles/louiscohen/cm54miu4700j201qparty6veb` (from yelp-combinator) |
@@ -32,6 +33,7 @@ A solo, local-first web app: full-bleed Mapbox map + left layers panel. Users se
 | State | Zustand + persist to **IndexedDB** (`idb-keyval`) |
 | DnD | `@dnd-kit` for layer tree reorder/reparent |
 | Motion | `motion` (pin select / panel transitions) |
+| Toasts | **sonner** (via shadcn `Toaster`; `pushToast` in the store) |
 | Pin glyphs | `@mapbox/maki` (from Search Box `maki`) |
 | Search | **Mapbox Search Box API** (see note below) |
 
@@ -75,9 +77,9 @@ map-layers/
 | --- | --- |
 | `packages/domain` | Pure document/tree rules (mutations, selectors, `resolveDropTarget`) |
 | `lib/` | I/O adapters (`mapboxSearch`) and Mapbox camera helpers (`mapCamera`) |
-| `store/` | Zustand: document + selection + `searchPreview` + toasts; wraps domain |
+| `store/` | Zustand: document + selection + `searchPreview`; wraps domain; toasts via sonner |
 | `hooks/` | React lifecycle + store coordination (`usePlaceSearch`, `useLocation`, camera policies) |
-| `components/` | Presentational UI: props/events in, render out |
+| `components/` | Presentational UI: props/events in, render out (`components/ui` = shadcn primitives) |
 
 No backend package in v1.
 
@@ -236,8 +238,10 @@ Layer groups stay DOM-tree UI only; they never become Mapbox style layers. Conto
 └─────────────────┴──────────────────────────────────┘
 ```
 
-- Left pane ~280–320px, resizable later; glass/neutral chrome consistent with yelp map UI (not purple/cream AI defaults).
+- Left pane ~280–320px, resizable later; **light sidebar chrome** via shadcn semantic tokens (`bg-sidebar`, `border-sidebar-border`, etc.) — not dark glass, not purple/cream AI defaults.
 - Map is the remaining viewport; body `overflow: hidden`, `h-svh`.
+- Theme is **always light** (`:root` tokens only; no `dark` class / theme toggle in v1).
+- Layer / pin colors remain **data-driven hex** (not theme tokens). User-location marker stays semantic blue.
 
 ### Layers panel (Figma-like)
 

@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
-import { cn } from '@/lib/cn'
 import { makiIconSvg } from '@/lib/makiIcon'
+import { cn } from '@/lib/utils'
 
 type MakiGlyphProps = {
 	maki?: string

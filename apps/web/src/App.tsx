@@ -5,7 +5,7 @@ import { LocateButton } from '@/components/map/LocateButton'
 import { MapView } from '@/components/map/MapView'
 import { PlaceDetail } from '@/components/PlaceDetail'
 import { SearchPanel } from '@/components/search/SearchPanel'
-import { ToastStack } from '@/components/ToastStack'
+import { Toaster } from '@/components/ui/sonner'
 import { useFlyToSelectedPlace } from '@/hooks/useFlyToSelectedPlace'
 import { useLocation } from '@/hooks/useLocation'
 import { useDocumentStore } from '@/store/documentStore'
@@ -28,8 +28,8 @@ export function App() {
 	}, [setHydrated])
 
 	return (
-		<div className="flex h-svh w-screen overflow-hidden bg-neutral-950 text-neutral-50">
-			<aside className="relative z-30 flex w-[300px] shrink-0 flex-col border-r border-neutral-800 bg-neutral-950/95 backdrop-blur">
+		<div className="flex h-svh w-screen overflow-hidden bg-background text-foreground">
+			<aside className="relative z-30 flex w-[300px] shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
 				<div className="min-h-0 flex-1">
 					<LayersPanel mapRef={mapRef} />
 				</div>
@@ -40,7 +40,7 @@ export function App() {
 				{hydrated ? (
 					<MapView mapRef={mapRef} userLocation={userLocation} />
 				) : (
-					<div className="flex h-full items-center justify-center text-sm text-neutral-500">
+					<div className="flex h-full items-center justify-center text-sm text-muted-foreground">
 						Loading map…
 					</div>
 				)}
@@ -50,7 +50,7 @@ export function App() {
 					className="absolute right-4 bottom-4 z-20"
 				/>
 				<PlaceDetail />
-				<ToastStack />
+				<Toaster position="bottom-right" />
 			</main>
 		</div>
 	)

@@ -1,8 +1,9 @@
 import type { MapRef } from 'react-map-gl'
+import { Button } from '@/components/ui/button'
 import type { LocationState } from '@/hooks/useLocation'
-import { cn } from '@/lib/cn'
 import { DEFAULT_ZOOM } from '@/lib/constants'
 import { flyToPoint } from '@/lib/mapCamera'
+import { cn } from '@/lib/utils'
 
 type LocateButtonProps = {
 	mapRef: React.RefObject<MapRef | null>
@@ -29,12 +30,14 @@ export function LocateButton({ mapRef, userLocation, className }: LocateButtonPr
 	}
 
 	return (
-		<button
+		<Button
 			type="button"
+			variant="outline"
+			size="icon-lg"
 			onClick={handleClick}
 			aria-label="Go to current location"
 			className={cn(
-				'flex h-12 w-12 items-center justify-center rounded-full border border-neutral-950/10 bg-neutral-50/90 text-neutral-500 shadow-lg backdrop-blur hover:border-blue-500/50 hover:text-blue-500',
+				'size-12 rounded-full border-border bg-card/90 text-muted-foreground shadow-lg backdrop-blur hover:border-primary/50 hover:text-primary',
 				className,
 			)}
 		>
@@ -48,6 +51,6 @@ export function LocateButton({ mapRef, userLocation, className }: LocateButtonPr
 			>
 				<path d="M444.52 3.52L28.74 195.42c-47.97 22.39-31.98 92.75 19.19 92.75h175.91v175.91c0 51.17 70.36 67.17 92.75 19.19l191.9-415.78c21.39-46.37-25.56-93.32-71.97-64.97z" />
 			</svg>
-		</button>
+		</Button>
 	)
 }

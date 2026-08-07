@@ -3,9 +3,18 @@ import { CSS } from '@dnd-kit/utilities'
 import type { DocNode, NodeId } from '@map-layers/domain'
 import { useEffect, useMemo, useState } from 'react'
 import { MakiGlyph } from '@/components/icons/MakiGlyph'
-import { cn } from '@/lib/cn'
+import { Button } from '@/components/ui/button'
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { Input } from '@/components/ui/input'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { COLOR_PALETTE } from '@/lib/constants'
 import { MAKI_ICON_NAMES } from '@/lib/makiIcon'
+import { cn } from '@/lib/utils'
 
 export type SortableRowProps = {
 	node: DocNode
@@ -22,10 +31,10 @@ export type SortableRowProps = {
 	onStartEdit: () => void
 	onCommitEdit: (name: string) => void
 	onCancelEdit: () => void
-	onToggleMenu: () => void
-	onToggleColor: () => void
+	onMenuOpenChange: (open: boolean) => void
+	onColorOpenChange: (open: boolean) => void
 	onPickColor: (color: string) => void
-	onToggleIcon: () => void
+	onIconOpenChange: (open: boolean) => void
 	onPickMaki: (maki: string | undefined) => void
 	onUngroup: () => void
 	onDelete: () => void
@@ -48,10 +57,10 @@ export function SortableRow({
 	onStartEdit,
 	onCommitEdit,
 	onCancelEdit,
-	onToggleMenu,
-	onToggleColor,
+	onMenuOpenChange,
+	onColorOpenChange,
 	onPickColor,
-	onToggleIcon,
+	onIconOpenChange,
 	onPickMaki,
 	onUngroup,
 	onDelete,
@@ -91,15 +100,15 @@ export function SortableRow({
 				paddingLeft: 8 + depth * 14,
 			}}
 			className={cn(
-				'group relative rounded-md',
-				selected && 'bg-neutral-800/80',
+				'group relative rounded-lg',
+				selected && 'bg-accent/80',
 				isDragging && 'opacity-60',
 			)}
 		>
 			<div className="flex items-center gap-1 px-1 py-1">
 				<button
 					type="button"
-					className="cursor-grab px-0.5 text-[10px] text-neutral-600 hover:text-neutral-400 active:cursor-grabbing"
+					className="cursor-grab px-0.5 text-[10px] text-muted-foreground hover:text-foreground active:cursor-grabbing"
 					aria-label="Drag"
 					{...attributes}
 					{...listeners}
@@ -110,7 +119,7 @@ export function SortableRow({
 				{isLayer ? (
 					<button
 						type="button"
-						className="w-4 text-[10px] text-neutral-500"
+						className="w-4 text-[10px] text-muted-foreground"
 						onClick={onToggleCollapsed}
 						aria-label={node.collapsed ? 'Expand' : 'Collapse'}
 					>
@@ -126,7 +135,7 @@ export function SortableRow({
 						onClick={onToggleVisible}
 						className={cn(
 							'w-6 rounded text-[10px] font-medium',
-							node.visible ? 'text-neutral-200' : 'text-neutral-600 line-through',
+							node.visible ? 'text-foreground' : 'text-muted-foreground line-through',
 						)}
 						aria-label={node.visible ? 'Hide layer' : 'Show layer'}
 						title={node.visible ? 'Hide' : 'Show'}
@@ -138,35 +147,79 @@ export function SortableRow({
 				)}
 
 				{isLayer ? (
-					<button
-						type="button"
-						onClick={onToggleColor}
-						className="h-3.5 w-3.5 shrink-0 rounded-sm border border-white/20"
-						style={{ backgroundColor: node.color }}
-						aria-label="Layer color"
-					/>
+					<Popover open={colorOpen} onOpenChange={onColorOpenChange}>
+						<PopoverTrigger
+							className="h-3.5 w-3.5 shrink-0 rounded-sm border border-border"
+							style={{ backgroundColor: node.color }}
+							aria-label="Layer color"
+						/>
+						<PopoverContent align="start" className="w-auto gap-1 p-2">
+							<div className="grid grid-cols-5 gap-1">
+								{COLOR_PALETTE.map((color) => (
+									<button
+										key={color}
+										type="button"
+										className="h-5 w-5 rounded-sm border border-border"
+										style={{ backgroundColor: color }}
+										onClick={() => onPickColor(color)}
+										aria-label={color}
+									/>
+								))}
+							</div>
+						</PopoverContent>
+					</Popover>
 				) : (
-					<span className="h-2 w-2 shrink-0 rounded-full bg-neutral-500" aria-hidden />
+					<span className="h-2 w-2 shrink-0 rounded-full bg-muted-foreground" aria-hidden />
 				)}
 
 				{isLayer ? (
-					<button
-						type="button"
-						onClick={onToggleIcon}
-						className="flex h-4 w-4 shrink-0 items-center justify-center rounded border border-white/15 bg-neutral-950/60"
-						aria-label="Layer icon"
-						title={layerMaki ? `Icon: ${layerMaki}` : 'Set layer icon'}
-					>
-						<MakiGlyph
-							maki={layerMaki}
-							color={layerColor}
-							className="h-3 w-3"
-						/>
-					</button>
+					<Popover open={iconOpen} onOpenChange={onIconOpenChange}>
+						<PopoverTrigger
+							className="flex h-4 w-4 shrink-0 items-center justify-center rounded border border-border bg-background/60"
+							aria-label="Layer icon"
+							title={layerMaki ? `Icon: ${layerMaki}` : 'Set layer icon'}
+						>
+							<MakiGlyph maki={layerMaki} color={layerColor} className="h-3 w-3" />
+						</PopoverTrigger>
+						<PopoverContent align="start" className="w-56 gap-2 p-2">
+							<Input
+								value={iconFilter}
+								onChange={(e) => setIconFilter(e.target.value)}
+								placeholder="Filter icons…"
+								className="h-7 text-[11px]"
+							/>
+							<Button
+								type="button"
+								variant={!layerMaki ? 'secondary' : 'ghost'}
+								size="xs"
+								onClick={() => onPickMaki(undefined)}
+								className="w-full justify-start"
+							>
+								Auto (place icons)
+							</Button>
+							<div className="grid max-h-40 grid-cols-6 gap-1 overflow-y-auto">
+								{filteredIcons.map((name) => (
+									<button
+										key={name}
+										type="button"
+										title={name}
+										aria-label={name}
+										onClick={() => onPickMaki(name)}
+										className={cn(
+											'flex h-7 w-7 items-center justify-center rounded border border-transparent hover:border-border hover:bg-accent',
+											layerMaki === name && 'border-ring bg-accent',
+										)}
+									>
+										<MakiGlyph maki={name} color={layerColor} className="h-3.5 w-3.5" />
+									</button>
+								))}
+							</div>
+						</PopoverContent>
+					</Popover>
 				) : null}
 
 				{editing ? (
-					<input
+					<Input
 						value={draft}
 						onChange={(e) => setDraft(e.target.value)}
 						onBlur={() => {
@@ -177,125 +230,48 @@ export function SortableRow({
 							if (e.key === 'Enter' && draft.trim()) onCommitEdit(draft)
 							if (e.key === 'Escape') onCancelEdit()
 						}}
-						className="min-w-0 flex-1 rounded border border-neutral-600 bg-neutral-950 px-1 py-0.5 text-xs text-neutral-50 outline-none"
+						className="h-6 min-w-0 flex-1 rounded-md px-1 text-xs"
 					/>
 				) : (
 					<button
 						type="button"
 						onClick={onSelect}
 						onDoubleClick={onStartEdit}
-						className="min-w-0 flex-1 truncate text-left text-xs text-neutral-100"
+						className="min-w-0 flex-1 truncate text-left text-xs text-foreground"
 					>
 						{node.name}
 					</button>
 				)}
 
-				<button
-					type="button"
-					onClick={onToggleMenu}
-					className="rounded px-1 text-xs text-neutral-500 opacity-0 hover:bg-neutral-700 hover:text-neutral-200 group-hover:opacity-100"
-					aria-label="More"
-				>
-					...
-				</button>
-			</div>
-
-			{colorOpen && isLayer ? (
-				<div className="absolute top-8 left-10 z-20 grid grid-cols-5 gap-1 rounded-md border border-neutral-700 bg-neutral-900 p-2 shadow-xl">
-					{COLOR_PALETTE.map((color) => (
-						<button
-							key={color}
-							type="button"
-							className="h-5 w-5 rounded-sm border border-white/10"
-							style={{ backgroundColor: color }}
-							onClick={() => onPickColor(color)}
-							aria-label={color}
-						/>
-					))}
-				</div>
-			) : null}
-
-			{iconOpen && isLayer ? (
-				<div className="absolute top-8 left-16 z-20 w-56 rounded-md border border-neutral-700 bg-neutral-900 p-2 shadow-xl">
-					<input
-						value={iconFilter}
-						onChange={(e) => setIconFilter(e.target.value)}
-						placeholder="Filter icons…"
-						className="mb-2 w-full rounded border border-neutral-700 bg-neutral-950 px-2 py-1 text-[11px] text-neutral-100 outline-none placeholder:text-neutral-600 focus:border-neutral-500"
+				<DropdownMenu open={menuOpen} onOpenChange={onMenuOpenChange}>
+					<DropdownMenuTrigger
+						render={
+							<Button
+								type="button"
+								variant="ghost"
+								size="icon-xs"
+								className="opacity-0 group-hover:opacity-100"
+								aria-label="More"
+							>
+								...
+							</Button>
+						}
 					/>
-					<button
-						type="button"
-						onClick={() => onPickMaki(undefined)}
-						className={cn(
-							'mb-1 w-full rounded px-2 py-1 text-left text-[11px] text-neutral-300 hover:bg-neutral-800',
-							!layerMaki && 'bg-neutral-800',
-						)}
-					>
-						Auto (place icons)
-					</button>
-					<div className="grid max-h-40 grid-cols-6 gap-1 overflow-y-auto">
-						{filteredIcons.map((name) => (
-							<button
-								key={name}
-								type="button"
-								title={name}
-								aria-label={name}
-								onClick={() => onPickMaki(name)}
-								className={cn(
-									'flex h-7 w-7 items-center justify-center rounded border border-transparent hover:border-neutral-600 hover:bg-neutral-800',
-									layerMaki === name && 'border-neutral-400 bg-neutral-800',
-								)}
-							>
-								<MakiGlyph maki={name} color={layerColor} className="h-3.5 w-3.5" />
-							</button>
-						))}
-					</div>
-				</div>
-			) : null}
-
-			{menuOpen ? (
-				<div className="absolute top-8 right-1 z-20 min-w-[140px] rounded-md border border-neutral-700 bg-neutral-900 py-1 text-xs shadow-xl">
-					{isLayer ? (
-						<>
-							<button
-								type="button"
-								className="block w-full px-3 py-1.5 text-left hover:bg-neutral-800"
-								onClick={onCreateSublayer}
-							>
-								New sublayer
-							</button>
-							<button
-								type="button"
-								className="block w-full px-3 py-1.5 text-left hover:bg-neutral-800"
-								onClick={onUngroup}
-							>
-								Ungroup
-							</button>
-						</>
-					) : null}
-					<button
-						type="button"
-						className="block w-full px-3 py-1.5 text-left hover:bg-neutral-800"
-						onClick={onStartEdit}
-					>
-						Rename
-					</button>
-					<button
-						type="button"
-						className="block w-full px-3 py-1.5 text-left hover:bg-neutral-800"
-						onClick={onFit}
-					>
-						Fit to map
-					</button>
-					<button
-						type="button"
-						className="block w-full px-3 py-1.5 text-left text-red-400 hover:bg-neutral-800"
-						onClick={onDelete}
-					>
-						Delete
-					</button>
-				</div>
-			) : null}
+					<DropdownMenuContent align="end" className="min-w-35">
+						{isLayer ? (
+							<>
+								<DropdownMenuItem onClick={onCreateSublayer}>New sublayer</DropdownMenuItem>
+								<DropdownMenuItem onClick={onUngroup}>Ungroup</DropdownMenuItem>
+							</>
+						) : null}
+						<DropdownMenuItem onClick={onStartEdit}>Rename</DropdownMenuItem>
+						<DropdownMenuItem onClick={onFit}>Fit to map</DropdownMenuItem>
+						<DropdownMenuItem variant="destructive" onClick={onDelete}>
+							Delete
+						</DropdownMenuItem>
+					</DropdownMenuContent>
+				</DropdownMenu>
+			</div>
 		</li>
 	)
 }

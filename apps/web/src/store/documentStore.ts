@@ -15,6 +15,7 @@ import {
 	type PlaceDraft,
 } from '@map-layers/domain'
 import { del, get, set } from 'idb-keyval'
+import { toast } from 'sonner'
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 
@@ -38,11 +39,6 @@ export type AddTarget =
 	| { type: 'layer'; layerId: NodeId }
 	| { type: 'new-layer'; name: string; color?: string }
 
-export type Toast = {
-	id: string
-	message: string
-}
-
 export type SearchPreview = {
 	color: string
 	results: PlaceDraft[]
@@ -56,7 +52,6 @@ type DocumentStore = {
 	selectedPlaceId: NodeId | null
 	searchPreview: SearchPreview | null
 	lastSkippedCount: number
-	toasts: Toast[]
 	setHydrated: (value: boolean) => void
 	setSelectedNodeIds: (ids: NodeId[]) => void
 	selectPlace: (id: NodeId | null) => void
@@ -64,7 +59,6 @@ type DocumentStore = {
 	toggleSearchSelection: (mapboxId: string) => void
 	setSearchSelection: (mapboxIds: string[]) => void
 	pushToast: (message: string) => void
-	dismissToast: (id: string) => void
 	createLayer: (name: string, parentId?: NodeId | null) => NodeId | null
 	renameNode: (id: NodeId, name: string) => void
 	toggleLayerVisible: (id: NodeId) => void
@@ -77,10 +71,6 @@ type DocumentStore = {
 	addPlaces: (places: PlaceDraft[], target: AddTarget) => NodeId[]
 }
 
-function toastId() {
-	return `toast_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`
-}
-
 export const useDocumentStore = create<DocumentStore>()(
 	persist(
 		(setState, getState) => ({
@@ -90,7 +80,6 @@ export const useDocumentStore = create<DocumentStore>()(
 			selectedPlaceId: null,
 			searchPreview: null,
 			lastSkippedCount: 0,
-			toasts: [],
 			setHydrated: (value) => setState({ hydrated: value }),
 			setSelectedNodeIds: (ids) => setState({ selectedNodeIds: ids }),
 			selectPlace: (id) =>
@@ -116,14 +105,9 @@ export const useDocumentStore = create<DocumentStore>()(
 					searchPreview: { ...preview, selectedMapboxIds: mapboxIds },
 				})
 			},
-			pushToast: (message) =>
-				setState((state) => ({
-					toasts: [...state.toasts, { id: toastId(), message }],
-				})),
-			dismissToast: (id) =>
-				setState((state) => ({
-					toasts: state.toasts.filter((t) => t.id !== id),
-				})),
+			pushToast: (message) => {
+				toast(message)
+			},
 			createLayer: (name, parentId = null) => {
 				try {
 					const { doc, layerId } = domainCreateLayer(getState().document, {
