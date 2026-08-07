@@ -35,11 +35,17 @@ const idbStorage = {
 export type AddTarget =
 	| { type: 'root' }
 	| { type: 'layer'; layerId: NodeId }
-	| { type: 'new-layer'; name: string }
+	| { type: 'new-layer'; name: string; color?: string }
 
 export type Toast = {
 	id: string
 	message: string
+}
+
+export type SearchPreview = {
+	color: string
+	results: PlaceDraft[]
+	selectedMapboxIds: string[]
 }
 
 type DocumentStore = {
@@ -47,11 +53,15 @@ type DocumentStore = {
 	hydrated: boolean
 	selectedNodeIds: NodeId[]
 	selectedPlaceId: NodeId | null
+	searchPreview: SearchPreview | null
 	lastSkippedCount: number
 	toasts: Toast[]
 	setHydrated: (value: boolean) => void
 	setSelectedNodeIds: (ids: NodeId[]) => void
 	selectPlace: (id: NodeId | null) => void
+	setSearchPreview: (preview: SearchPreview | null) => void
+	toggleSearchSelection: (mapboxId: string) => void
+	setSearchSelection: (mapboxIds: string[]) => void
 	pushToast: (message: string) => void
 	dismissToast: (id: string) => void
 	createLayer: (name: string, parentId?: NodeId | null) => NodeId | null
@@ -76,6 +86,7 @@ export const useDocumentStore = create<DocumentStore>()(
 			hydrated: false,
 			selectedNodeIds: [],
 			selectedPlaceId: null,
+			searchPreview: null,
 			lastSkippedCount: 0,
 			toasts: [],
 			setHydrated: (value) => setState({ hydrated: value }),
@@ -85,6 +96,24 @@ export const useDocumentStore = create<DocumentStore>()(
 					selectedPlaceId: id,
 					selectedNodeIds: id ? [id] : getState().selectedNodeIds,
 				}),
+			setSearchPreview: (preview) => setState({ searchPreview: preview }),
+			toggleSearchSelection: (mapboxId) => {
+				const preview = getState().searchPreview
+				if (!preview) return
+				const selected = new Set(preview.selectedMapboxIds)
+				if (selected.has(mapboxId)) selected.delete(mapboxId)
+				else selected.add(mapboxId)
+				setState({
+					searchPreview: { ...preview, selectedMapboxIds: [...selected] },
+				})
+			},
+			setSearchSelection: (mapboxIds) => {
+				const preview = getState().searchPreview
+				if (!preview) return
+				setState({
+					searchPreview: { ...preview, selectedMapboxIds: mapboxIds },
+				})
+			},
 			pushToast: (message) =>
 				setState((state) => ({
 					toasts: [...state.toasts, { id: toastId(), message }],
@@ -165,7 +194,10 @@ export const useDocumentStore = create<DocumentStore>()(
 				if (target.type === 'layer') {
 					parentId = target.layerId
 				} else if (target.type === 'new-layer') {
-					const created = domainCreateLayer(doc, { name: target.name || 'New layer' })
+					const created = domainCreateLayer(doc, {
+						name: target.name || 'New layer',
+						color: target.color,
+					})
 					doc = created.doc
 					parentId = created.layerId
 				}
@@ -177,6 +209,7 @@ export const useDocumentStore = create<DocumentStore>()(
 
 				setState({
 					document: result.doc,
+					searchPreview: null,
 					lastSkippedCount: result.skippedMapboxIds.length,
 					selectedNodeIds: result.addedIds.length ? result.addedIds : parentId ? [parentId] : [],
 				})

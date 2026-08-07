@@ -3,7 +3,7 @@
 ## Status
 
 - Last updated: 2026-08-06
-- Implemented: living docs; pnpm/turbo monorepo; `@map-layers/domain` (tree, visibility/color, mutations + tests); Zustand + IndexedDB store; Mapbox map (custom style); layers panel (create/rename/delete/ungroup/reorder/color/visibility); place pins; Search Box add flow; fit bounds; modals/toasts
+- Implemented: living docs; monorepo; domain; Zustand/IndexedDB; Mapbox (LA default + geolocation); layers panel; pins; Search Box **forward** search (`proximity` + viewport `bbox`; preview pins stay in place — no auto-zoom); random color for new layers; fit bounds on add / layer fit; modals/toasts
 - In progress: none
 - Next: optional polish (layer opacity, clustering, isochrones)
 - Deferred: see [Explicitly deferred](#explicitly-deferred) and [Future: isochrone / isodistance](#future-isochrone--isodistance-architecture-fit)
@@ -193,9 +193,9 @@ Layer groups stay DOM-tree UI only; they never become Mapbox style layers. Conto
 
 `apps/web/src/lib/mapboxSearch.ts`:
 
-1. Suggest (debounced) with `proximity` = map center, optional `bbox` = viewport
-2. Retrieve selected suggestions → normalize to `PlaceNode` draft
-3. Multi-select in results UI; “Add all” runs Retrieve for each as needed
+1. Forward (debounced) with `proximity` = map center and `bbox` = current viewport (`minLon,minLat,maxLon,maxLat`)
+2. Normalize features to `PlaceDraft` (coordinates in one request; no Suggest→Retrieve session needed for forward)
+3. Multi-select in results UI; add selected drafts into the tree
 
 ---
 
@@ -244,10 +244,10 @@ Places appear as leaf rows under their layer (indent). Selecting a place flies t
 
 ### Search → add flow
 
-1. User types query in Search section (or Cmd-K later).
-2. Results list with checkboxes; “Select all”.
+1. User types query in Search section (or Cmd-K later). Forward search uses map **center** as `proximity` and the current viewport as `bbox` (Mapbox Search Box hard-filters to that box).
+2. Results list with checkboxes; “Select all”. Preview pins appear on the map; **camera stays put** (no fit/fly on results).
 3. Destination control: **Top level** | **Existing layer…** | **New layer** (name prefilled with query).
-4. Confirm **Add** → places inserted; if New layer, create layer then add places as children; optionally fly/fit bounds to added set.
+4. Confirm **Add** → places inserted; if New layer, create layer then add places as children; then fly/fit bounds to the added set.
 
 ---
 

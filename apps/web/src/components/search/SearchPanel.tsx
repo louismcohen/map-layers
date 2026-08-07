@@ -1,9 +1,9 @@
-import { listLayers, type NodeId } from '@map-layers/domain'
-import { useEffect, useMemo, useState } from 'react'
+import { listLayers, type NodeId, pickRandomLayerColor, type PlaceDraft } from '@map-layers/domain'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { MapRef } from 'react-map-gl'
 import { useDebouncedCallback } from 'use-debounce'
 import { cn } from '@/lib/cn'
-import { retrievePlaces, type SearchSuggestion, suggestPlaces } from '@/lib/mapboxSearch'
+import { forwardSearch } from '@/lib/mapboxSearch'
 import { type AddTarget, useDocumentStore } from '@/store/documentStore'
 
 type SearchPanelProps = {
@@ -12,37 +12,71 @@ type SearchPanelProps = {
 
 type Destination = { mode: 'root' } | { mode: 'layer'; layerId: NodeId } | { mode: 'new-layer' }
 
+function fitMapToPlaces(mapRef: React.RefObject<MapRef | null>, places: PlaceDraft[]) {
+	if (!mapRef.current || places.length === 0) return
+	if (places.length === 1 && places[0]) {
+		mapRef.current.flyTo({
+			center: [places[0].coordinates.lng, places[0].coordinates.lat],
+			zoom: 14,
+			duration: 700,
+		})
+		return
+	}
+	const lngs = places.map((p) => p.coordinates.lng)
+	const lats = places.map((p) => p.coordinates.lat)
+	mapRef.current.fitBounds(
+		[
+			[Math.min(...lngs), Math.min(...lats)],
+			[Math.max(...lngs), Math.max(...lats)],
+		],
+		{ padding: 80, duration: 700 },
+	)
+}
+
 export function SearchPanel({ mapRef }: SearchPanelProps) {
 	const document = useDocumentStore((s) => s.document)
+	const searchPreview = useDocumentStore((s) => s.searchPreview)
 	const addPlaces = useDocumentStore((s) => s.addPlaces)
 	const pushToast = useDocumentStore((s) => s.pushToast)
 	const selectPlace = useDocumentStore((s) => s.selectPlace)
+	const setSearchPreview = useDocumentStore((s) => s.setSearchPreview)
+	const toggleSearchSelection = useDocumentStore((s) => s.toggleSearchSelection)
+	const setSearchSelection = useDocumentStore((s) => s.setSearchSelection)
 
 	const [query, setQuery] = useState('')
-	const [results, setResults] = useState<SearchSuggestion[]>([])
-	const [selected, setSelected] = useState<Set<string>>(new Set())
 	const [loading, setLoading] = useState(false)
 	const [adding, setAdding] = useState(false)
 	const [error, setError] = useState<string | null>(null)
 	const [destination, setDestination] = useState<Destination>({ mode: 'new-layer' })
 	const [newLayerName, setNewLayerName] = useState('')
+	const abortRef = useRef<AbortController | null>(null)
 
 	const layers = useMemo(() => listLayers(document), [document])
+	const results = searchPreview?.results ?? []
+	const selected = useMemo(
+		() => new Set(searchPreview?.selectedMapboxIds ?? []),
+		[searchPreview?.selectedMapboxIds],
+	)
 
-	const runSuggest = useDebouncedCallback(async (value: string) => {
+	const runSearch = useDebouncedCallback(async (value: string) => {
+		abortRef.current?.abort()
+		const controller = new AbortController()
+		abortRef.current = controller
+
 		if (!value.trim()) {
-			setResults([])
+			setSearchPreview(null)
 			setLoading(false)
+			setError(null)
 			return
 		}
 		const map = mapRef.current?.getMap()
 		const center = map?.getCenter()
 		const bounds = map?.getBounds()
-		const controller = new AbortController()
 		try {
 			setLoading(true)
 			setError(null)
-			const suggestions = await suggestPlaces({
+
+			const drafts = await forwardSearch({
 				query: value,
 				proximity: center ? { lng: center.lng, lat: center.lat } : undefined,
 				bbox: bounds
@@ -50,42 +84,44 @@ export function SearchPanel({ mapRef }: SearchPanelProps) {
 					: undefined,
 				signal: controller.signal,
 			})
-			setResults(suggestions)
-			setSelected(new Set())
+
+			if (controller.signal.aborted) return
+
+			if (drafts.length === 0) {
+				setSearchPreview(null)
+				return
+			}
+
+			const color = pickRandomLayerColor()
+			setSearchPreview({
+				color,
+				results: drafts,
+				selectedMapboxIds: [],
+			})
 		} catch (err) {
 			if ((err as Error).name === 'AbortError') return
 			setError(err instanceof Error ? err.message : 'Search failed')
-			setResults([])
+			setSearchPreview(null)
 		} finally {
-			setLoading(false)
+			if (!controller.signal.aborted) setLoading(false)
 		}
 	}, 300)
 
 	useEffect(() => {
-		runSuggest(query)
-	}, [query, runSuggest])
+		runSearch(query)
+	}, [query, runSearch])
 
 	useEffect(() => {
 		setNewLayerName(query.trim())
 	}, [query])
 
-	const toggle = (id: string) => {
-		setSelected((prev) => {
-			const next = new Set(prev)
-			if (next.has(id)) next.delete(id)
-			else next.add(id)
-			return next
-		})
-	}
-
-	const selectAll = () => setSelected(new Set(results.map((r) => r.mapboxId)))
+	const selectAll = () => setSearchSelection(results.map((r) => r.mapboxId))
 
 	const handleAdd = async () => {
-		const ids = [...selected]
-		if (ids.length === 0) return
+		if (!searchPreview || selected.size === 0) return
 		setAdding(true)
 		try {
-			const drafts = await retrievePlaces(ids)
+			const drafts = searchPreview.results.filter((r) => selected.has(r.mapboxId))
 			let target: AddTarget
 			if (destination.mode === 'root') target = { type: 'root' }
 			else if (destination.mode === 'layer')
@@ -94,6 +130,7 @@ export function SearchPanel({ mapRef }: SearchPanelProps) {
 				target = {
 					type: 'new-layer',
 					name: newLayerName.trim() || query.trim() || 'New layer',
+					color: searchPreview.color,
 				}
 
 			const addedIds = addPlaces(drafts, target)
@@ -103,29 +140,19 @@ export function SearchPanel({ mapRef }: SearchPanelProps) {
 			const coords = addedIds
 				.map((id) => doc.nodes[id])
 				.filter((n): n is Extract<typeof n, { kind: 'place' }> => n?.kind === 'place')
-				.map((p) => p.coordinates)
 
-			if (coords.length && mapRef.current) {
-				if (coords.length === 1 && coords[0]) {
-					mapRef.current.flyTo({
-						center: [coords[0].lng, coords[0].lat],
-						zoom: 14,
-						duration: 700,
-					})
-				} else {
-					const lngs = coords.map((p) => p.lng)
-					const lats = coords.map((p) => p.lat)
-					mapRef.current.fitBounds(
-						[
-							[Math.min(...lngs), Math.min(...lats)],
-							[Math.max(...lngs), Math.max(...lats)],
-						],
-						{ padding: 80, duration: 700 },
-					)
-				}
-			}
+			fitMapToPlaces(
+				mapRef,
+				coords.map((p) => ({
+					mapboxId: p.mapboxId,
+					name: p.name,
+					coordinates: p.coordinates,
+					address: p.address,
+					featureType: p.featureType,
+				})),
+			)
 
-			setSelected(new Set())
+			setQuery('')
 		} catch (err) {
 			pushToast(err instanceof Error ? err.message : 'Could not add places')
 		} finally {
@@ -136,9 +163,23 @@ export function SearchPanel({ mapRef }: SearchPanelProps) {
 	return (
 		<div className="flex max-h-[45%] min-h-[180px] flex-col border-t border-neutral-800">
 			<div className="border-b border-neutral-800 px-3 py-2">
-				<h2 className="mb-2 text-xs font-semibold tracking-wide text-neutral-300 uppercase">
-					Search places
-				</h2>
+				<div className="mb-2 flex items-center justify-between gap-2">
+					<h2 className="text-xs font-semibold tracking-wide text-neutral-300 uppercase">
+						Search places
+					</h2>
+					{searchPreview ? (
+						<span
+							className="inline-flex items-center gap-1.5 text-[11px] text-neutral-400"
+							title="Preview / new-layer color"
+						>
+							<span
+								className="h-3 w-3 rounded-sm border border-white/20"
+								style={{ backgroundColor: searchPreview.color }}
+							/>
+							Pin color
+						</span>
+					) : null}
+				</div>
 				<input
 					value={query}
 					onChange={(e) => setQuery(e.target.value)}
@@ -167,14 +208,20 @@ export function SearchPanel({ mapRef }: SearchPanelProps) {
 									<input
 										type="checkbox"
 										checked={checked}
-										onChange={() => toggle(result.mapboxId)}
+										onChange={() => toggleSearchSelection(result.mapboxId)}
 										className="mt-0.5"
 									/>
+									{searchPreview ? (
+										<span
+											className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full border border-white/20"
+											style={{ backgroundColor: searchPreview.color }}
+										/>
+									) : null}
 									<span className="min-w-0">
 										<span className="block truncate text-xs text-neutral-100">{result.name}</span>
-										{result.fullAddress ? (
+										{result.address ? (
 											<span className="block truncate text-[11px] text-neutral-500">
-												{result.fullAddress}
+												{result.address}
 											</span>
 										) : null}
 									</span>

@@ -1,6 +1,7 @@
 import { createId } from './document'
 import { collectDescendantIds, findExistingMapboxIds, getLayer, getParentId } from './selectors'
 import {
+	DEFAULT_PLACE_COLOR,
 	type Document,
 	LAYER_COLOR_PALETTE,
 	type LayerNode,
@@ -59,6 +60,11 @@ export function nextLayerColor(doc: Document): string {
 		if (!used.has(color.toLowerCase())) return color
 	}
 	return LAYER_COLOR_PALETTE[doc.rootChildren.length % LAYER_COLOR_PALETTE.length] ?? '#1f01b9'
+}
+
+export function pickRandomLayerColor(): string {
+	const index = Math.floor(Math.random() * LAYER_COLOR_PALETTE.length)
+	return LAYER_COLOR_PALETTE[index] ?? DEFAULT_PLACE_COLOR
 }
 
 export type CreateLayerInput = {

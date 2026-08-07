@@ -11,6 +11,7 @@ export {
 	deleteNodes,
 	moveNodes,
 	nextLayerColor,
+	pickRandomLayerColor,
 	renameNode,
 	setLayerCollapsed,
 	setLayerColor,

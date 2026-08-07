@@ -6,12 +6,14 @@ import { MapView } from '@/components/map/MapView'
 import { PlaceDetail } from '@/components/PlaceDetail'
 import { SearchPanel } from '@/components/search/SearchPanel'
 import { ToastStack } from '@/components/ToastStack'
+import { useLocation } from '@/hooks/useLocation'
 import { useDocumentStore } from '@/store/documentStore'
 
 export function App() {
 	const mapRef = useRef<MapRef>(null)
 	const hydrated = useDocumentStore((s) => s.hydrated)
 	const setHydrated = useDocumentStore((s) => s.setHydrated)
+	const userLocation = useLocation()
 
 	useEffect(() => {
 		const unsub = useDocumentStore.persist.onFinishHydration(() => {
@@ -34,13 +36,17 @@ export function App() {
 
 			<main className="relative min-w-0 flex-1">
 				{hydrated ? (
-					<MapView mapRef={mapRef} />
+					<MapView mapRef={mapRef} userLocation={userLocation} />
 				) : (
 					<div className="flex h-full items-center justify-center text-sm text-neutral-500">
 						Loading map…
 					</div>
 				)}
-				<LocateButton mapRef={mapRef} className="absolute right-4 bottom-4 z-20" />
+				<LocateButton
+					mapRef={mapRef}
+					userLocation={userLocation}
+					className="absolute right-4 bottom-4 z-20"
+				/>
 				<PlaceDetail />
 				<ToastStack />
 			</main>
