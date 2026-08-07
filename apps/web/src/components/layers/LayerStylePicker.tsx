@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { type ColorResult, GithubPicker } from 'react-color';
 import { MakiGlyph } from '@/components/icons/MakiGlyph';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -49,24 +50,23 @@ export function LayerStylePicker({
             >
                 <MakiGlyph maki={maki} color={color} className='h-3 w-3' />
             </PopoverTrigger>
-            <PopoverContent align='start' className='w-56 gap-2 p-2'>
-                <div className='grid grid-cols-5 gap-1'>
-                    {COLOR_PALETTE.map((swatch) => (
-                        <button
-                            key={swatch}
-                            type='button'
-                            className={cn(
-                                'h-5 w-5 rounded-sm border border-border',
-                                color === swatch &&
-                                    'ring-2 ring-ring ring-offset-1 ring-offset-popover',
-                            )}
-                            style={{ backgroundColor: swatch }}
-                            onClick={() => onPickColor(swatch)}
-                            aria-label={swatch}
-                            aria-pressed={color === swatch}
-                        />
-                    ))}
-                </div>
+            <PopoverContent align='start' className='w-auto gap-2 p-2'>
+                <GithubPicker
+                    color={color}
+                    colors={[...COLOR_PALETTE]}
+                    triangle='hide'
+                    onChange={(result: ColorResult) => onPickColor(result.hex)}
+                    styles={{
+                        default: {
+                            card: {
+                                boxShadow: 'none',
+                                padding: 0,
+                                background: 'transparent',
+                                width: 'auto',
+                            },
+                        },
+                    }}
+                />
 
                 <div className='h-px bg-border' />
 

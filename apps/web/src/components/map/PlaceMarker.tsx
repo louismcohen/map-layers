@@ -2,6 +2,11 @@ import { motion } from 'motion/react'
 import { memo } from 'react'
 import { Marker } from 'react-map-gl'
 import { MakiGlyph } from '@/components/icons/MakiGlyph'
+import { cn } from '@/lib/utils'
+
+const iconFill = '#ffffff'
+
+type PlaceMarkerVariant = 'outline' | 'filled'
 
 type PlaceMarkerProps = {
 	id: string
@@ -10,6 +15,7 @@ type PlaceMarkerProps = {
 	color: string
 	selected: boolean
 	maki?: string
+	variant?: PlaceMarkerVariant
 	onClick: (id: string) => void
 }
 
@@ -20,8 +26,11 @@ function PlaceMarkerComponent({
 	color,
 	selected,
 	maki,
+	variant = 'filled',
 	onClick,
 }: PlaceMarkerProps) {
+	const filled = variant === 'filled'
+
 	return (
 		<Marker
 			latitude={latitude}
@@ -39,10 +48,14 @@ function PlaceMarkerComponent({
 				}}
 			>
 				<motion.div
-					className="flex h-8 w-8 cursor-pointer items-center justify-center overflow-hidden rounded-full border backdrop-blur-md"
+					className={cn(
+						'flex h-8 w-8 cursor-pointer items-center justify-center overflow-hidden rounded-full border backdrop-blur-md',
+						!filled &&
+							'bg-gradient-to-t from-neutral-200/95 via-neutral-200/95 to-neutral-50/95',
+					)}
 					style={{
-						background: `linear-gradient(to top, rgb(229 229 229 / 0.95), rgb(250 250 250 / 0.95))`,
-						borderColor: color,
+						backgroundColor: filled ? `${color}F2` : undefined,
+						borderColor: filled ? 'rgba(255,255,255,0.1)' : color,
 						borderWidth: 1,
 						boxShadow: selected
 							? `0px 0px 5px 2px ${color}60, 0px 3px 5px rgba(0,0,0,0.33)`
@@ -55,7 +68,20 @@ function PlaceMarkerComponent({
 						bounce: selected ? 0.5 : 0.55,
 					}}
 				>
-					<MakiGlyph maki={maki} color={color} className="h-4 w-4" />
+					<div
+						className={cn(
+							'flex h-full w-full items-center justify-center rounded-full bg-gradient-to-t',
+							filled
+								? 'from-transparent via-transparent to-neutral-50/20'
+								: 'from-transparent',
+						)}
+					>
+						<MakiGlyph
+							maki={maki}
+							color={filled ? iconFill : color}
+							className="h-4 w-4"
+						/>
+					</div>
 				</motion.div>
 			</div>
 		</Marker>

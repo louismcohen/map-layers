@@ -3,7 +3,7 @@
 ## Status
 
 - Last updated: 2026-08-06
-- Implemented: living docs; monorepo; domain (+ `resolveDropTarget`); Zustand/IndexedDB; Mapbox (LA default + geolocation); layers panel (**combined color + optional Maki icon** picker; Heroicons for drag / chevron expand / eye visibility); pins with Maki glyphs (place `maki`, overridable by nearest ancestor layer `maki`); Search Box with on-map preview pins (random color reused for new layers); fit bounds; modals/toasts; UI orchestration hooks (`usePlaceSearch`, `useFlyToUserOnce`) + shared `mapCamera` helpers; **shadcn/ui (base-rhea / taupe, always light)** for chrome + controls
+- Implemented: living docs; monorepo; domain (+ `resolveDropTarget`); Zustand/IndexedDB; Mapbox (LA default + geolocation); layers panel (**combined color + optional Maki icon** via `LayerStylePicker` + **react-color** `GithubPicker`; Heroicons for drag / chevron expand / eye visibility); **filled** pins with Maki glyphs (place `maki`, overridable by nearest ancestor layer `maki`); Search Box with on-map preview pins (random color reused for new layers); fit bounds; modals/toasts; UI orchestration hooks (`usePlaceSearch`, `useFlyToUserOnce`) + shared `mapCamera` helpers; **shadcn/ui (base-rhea / taupe, always light)** for chrome + controls
 - In progress: none
 - Next: optional polish (layer opacity, clustering, isochrones)
 - Deferred: see [Explicitly deferred](#explicitly-deferred) and [Future: isochrone / isodistance](#future-isochrone--isodistance-architecture-fit)
@@ -35,6 +35,7 @@ A solo, local-first web app: full-bleed Mapbox map + left layers panel. Users se
 | Motion | `motion` (pin select / panel transitions) |
 | Toasts | **sonner** (via shadcn `Toaster`; `pushToast` in the store) |
 | Pin glyphs | `@mapbox/maki` (from Search Box `maki`) |
+| Color picker | **react-color** (`GithubPicker`) in `LayerStylePicker` |
 | Search | **Mapbox Search Box API** (see note below) |
 
 ### Search API note (important)
@@ -195,8 +196,8 @@ Persist middleware → IndexedDB key `map-layers:v1`. No account.
 Port patterns from `~/Developer/yelp-combinator-frontend` (not a hard dependency — copy/adapt):
 
 - Map shell like `MapRender.tsx`: same style URL + token env
-- Pins like `IconMarker`: 32px circle, border, shadow, selected spring scale — **`color` prop from effective layer color**
-- Inner glyph = `@mapbox/maki` SVG from effective maki (`getEffectiveMaki`: nearest ancestor layer `maki`, else place `maki`, default `marker`); inlined and tinted with layer color via `currentColor`
+- Pins like `IconMarker` with `variant?: 'outline' | 'filled'` (**default `filled`**): 32px circle, shadow, selected spring scale — **`color` prop from effective layer color**. Filled = layer color fill (`${color}F2`), light border, soft top highlight, white glyph (yelp-combinator visited look). Outline = light gray gradient fill, colored border + glyph.
+- Inner glyph = `@mapbox/maki` SVG from effective maki (`getEffectiveMaki`: nearest ancestor layer `maki`, else place `maki`, default `marker`); tinted via `currentColor`
 - Optional: Supercluster + `ClusterMarker` if pin density gets high; start without clustering, add if needed
 - Click pin → select place in tree + lightweight detail popover (name, address, “reveal in layers”)
 
@@ -250,7 +251,7 @@ Each row:
 - Drag handle (`Bars2Icon`)
 - Expand/collapse (`ChevronRightIcon`, CSS `rotate-90` when open; layers only)
 - Visibility toggle (`EyeIcon` / `EyeSlashIcon`; layers only)
-- Style control (layers only): colored Maki glyph → one popover with palette + filterable icon grid; **Auto** clears icon override so place icons show (`LayerStylePicker`)
+- Style control (layers only): colored Maki glyph → one popover with **react-color** `GithubPicker` + filterable icon grid; **Auto** clears icon override so place icons show (`LayerStylePicker`)
 - Name (inline rename on double-click / Enter)
 - Context menu (`EllipsisVerticalIcon`): New sublayer, Ungroup, Delete, Fit map to contents
 
