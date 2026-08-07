@@ -2,7 +2,7 @@ import { listLayers, type NodeId, pickRandomLayerColor } from '@map-layers/domai
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { MapRef } from 'react-map-gl'
 import { useDebouncedCallback } from 'use-debounce'
-import { resetSearchSession, retrievePlaces, suggestPlaces } from '@/lib/mapboxSearch'
+import { forwardSearch } from '@/lib/mapboxSearch'
 import { fitToCoordinates } from '@/lib/mapCamera'
 import { type AddTarget, useDocumentStore } from '@/store/documentStore'
 
@@ -36,14 +36,13 @@ export function usePlaceSearch(mapRef: React.RefObject<MapRef | null>) {
 		[searchPreview?.selectedMapboxIds],
 	)
 
-	const runSuggest = useDebouncedCallback(async (value: string) => {
+	const runSearch = useDebouncedCallback(async (value: string) => {
 		abortRef.current?.abort()
 		const controller = new AbortController()
 		abortRef.current = controller
 
 		if (!value.trim()) {
 			setSearchPreview(null)
-			resetSearchSession()
 			setLoading(false)
 			setError(null)
 			return
@@ -56,7 +55,8 @@ export function usePlaceSearch(mapRef: React.RefObject<MapRef | null>) {
 		try {
 			setLoading(true)
 			setError(null)
-			const suggestions = await suggestPlaces({
+
+			const drafts = await forwardSearch({
 				query: value,
 				proximity: center ? { lng: center.lng, lat: center.lat } : undefined,
 				bbox: bounds
@@ -67,29 +67,17 @@ export function usePlaceSearch(mapRef: React.RefObject<MapRef | null>) {
 
 			if (controller.signal.aborted) return
 
-			if (suggestions.length === 0) {
+			if (drafts.length === 0) {
 				setSearchPreview(null)
 				return
 			}
 
-			const drafts = await retrievePlaces(
-				suggestions.map((s) => s.mapboxId),
-				{ resetSession: false, signal: controller.signal },
-			)
-
-			if (controller.signal.aborted) return
-
-			const color = pickRandomLayerColor()
+			const existingColor = useDocumentStore.getState().searchPreview?.color
 			setSearchPreview({
-				color,
+				color: existingColor ?? pickRandomLayerColor(),
 				results: drafts,
 				selectedMapboxIds: [],
 			})
-			fitToCoordinates(
-				mapRef,
-				drafts.map((d) => d.coordinates),
-				{ padding: 80, duration: 700 },
-			)
 		} catch (err) {
 			if ((err as Error).name === 'AbortError') return
 			setError(err instanceof Error ? err.message : 'Search failed')
@@ -100,8 +88,8 @@ export function usePlaceSearch(mapRef: React.RefObject<MapRef | null>) {
 	}, 300)
 
 	useEffect(() => {
-		runSuggest(query)
-	}, [query, runSuggest])
+		runSearch(query)
+	}, [query, runSearch])
 
 	useEffect(() => {
 		setNewLayerName(query.trim())
@@ -126,7 +114,7 @@ export function usePlaceSearch(mapRef: React.RefObject<MapRef | null>) {
 				}
 
 			const addedIds = addPlaces(drafts, target)
-			resetSearchSession()
+			setSearchPreview(null)
 			if (addedIds[0]) selectPlace(addedIds[0])
 
 			const doc = useDocumentStore.getState().document
