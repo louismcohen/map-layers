@@ -3,7 +3,7 @@
 ## Status
 
 - Last updated: 2026-08-09
-- Implemented: living docs; monorepo; domain (+ `resolveDropTarget`); Zustand/IndexedDB; Mapbox (LA default + geolocation); layers panel (**combined color + optional Maki icon** via `LayerStylePicker` + **react-color** `GithubPicker`; Heroicons for drag / chevron expand / eye visibility); **filled** pins with Maki glyphs (place `maki`, overridable by nearest ancestor layer `maki`); Search Box with on-map preview pins (random color reused for new layers); fit bounds; modals/toasts; UI orchestration hooks (`usePlaceSearch`, `useFlyToUserOnce`) + shared `mapCamera` helpers; **shadcn/ui (base-rhea / taupe, always light)** chrome — **floating `Sidebar`** (`AppSidebar`: search + layers) over full-bleed map, inset offset by `--sidebar-width`
+- Implemented: living docs; monorepo; domain (+ `resolveDropTarget`); Zustand/IndexedDB; Mapbox (LA default + geolocation); layers panel (**combined color + optional Maki icon** via `LayerStylePicker` + **react-color** `GithubPicker`; **whole-row** drag reorder; Heroicons for chevron expand / eye visibility); **filled** pins with Maki glyphs (place `maki`, overridable by nearest ancestor layer `maki`); Search Box with on-map preview pins (random color reused for new layers); fit bounds; modals/toasts; UI orchestration hooks (`usePlaceSearch`, `useFlyToUserOnce`) + shared `mapCamera` helpers; **shadcn/ui (base-rhea / taupe, always light)** chrome — **floating `Sidebar`** (`AppSidebar`: search + layers) over full-bleed map, inset offset by `--sidebar-width`
 - In progress: none
 - Next: optional polish (layer opacity, clustering, isochrones)
 - Deferred: see [Explicitly deferred](#explicitly-deferred) and [Future: isochrone / isodistance](#future-isochrone--isodistance-architecture-fit)
@@ -148,7 +148,7 @@ When creating a layer from search: **default name = the search query string** (t
 - `setLayerColor(id, color)`
 - `setLayerMaki(id, maki | undefined)` — optional pin glyph override for the layer’s subtree
 - `moveNodes({ ids, targetParentId | root, index })` — reorder + reparent
-- `resolveDropTarget(doc, activeId, overId)` — map DnD over-target to `{ parentId, index }` for `moveNodes`
+- `resolveDropTarget(doc, activeId, overId)` — map DnD over-target to `{ parentId, index }` for `moveNodes` (place→layer nests; layer→layer reorders as sibling)
 - `ungroupLayer(id)` — splice layer’s `children` into parent at the layer’s index; delete the layer node
 - `deleteNodes(ids)` — recursive for layers (confirm in UI); places removed from parent
 - `addPlaces({ places, targetParentId | root, index? })` — dedupe by `mapboxId` within document (skip or toast duplicates)
@@ -248,7 +248,7 @@ Layer groups stay DOM-tree UI only; they never become Mapbox style layers. Conto
 
 Each row:
 
-- Drag handle (`Bars2Icon`)
+- Whole-row drag (no grab handle; disabled while renaming; `PointerSensor` distance threshold keeps clicks on controls working)
 - Expand/collapse (`ChevronRightIcon`, CSS `rotate-90` when open; layers only)
 - Visibility toggle (`EyeIcon` / `EyeSlashIcon`; layers only)
 - Style control (layers only): colored Maki glyph → one popover with **react-color** `GithubPicker` + filterable icon grid; **Auto** clears icon override so place icons show (`LayerStylePicker`)
@@ -260,12 +260,12 @@ Behaviors:
 | Action | Behavior |
 | --- | --- |
 | Create layer | Modal asks name → insert under selection or root |
-| Reorder / nest | Drag onto layer or between rows; drop on root allowed |
+| Reorder / nest | Drag **places** onto a layer to nest; drag a **layer** onto another layer to reorder as a sibling (same parent). Nest layers via **New sublayer**. No undo yet — prefer deliberate nesting. |
 | Ungroup | Children move to parent (or root); layer removed |
 | Hide layer | Eye off; descendants disappear from map; nested eyes remain but ineffective until parent shown |
 | Color / icon | Combined style picker; color updates pins immediately; optional Maki overrides descendant glyphs |
 
-Places appear as leaf rows under their layer (indent): drag handle + name + menu only (no chevron/eye/style picker). Selecting a place highlights it and opens detail — **camera stays put** (use Fit to map from the row menu to frame).
+Places appear as leaf rows under their layer (indent): name + menu only (no chevron/eye/style picker). Selecting a place highlights it and opens detail — **camera stays put** (use Fit to map from the row menu to frame).
 
 ### Search → add flow
 

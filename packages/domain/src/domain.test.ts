@@ -214,7 +214,7 @@ describe('domain tree', () => {
 		expect(doc.nodes[placeId]?.name).toBe('Renamed')
 	})
 
-	it('resolveDropTarget: drop on layer appends as child', () => {
+	it('resolveDropTarget: place on layer appends as child', () => {
 		let doc = createEmptyDocument()
 		const layer = createLayer(doc, { name: 'L' })
 		doc = layer.doc
@@ -237,6 +237,41 @@ describe('domain tree', () => {
 		})
 	})
 
+	it('resolveDropTarget: layer on layer reorders as sibling (does not nest)', () => {
+		let doc = createEmptyDocument()
+		const a = createLayer(doc, { name: 'A' })
+		doc = a.doc
+		const b = createLayer(doc, { name: 'B' })
+		doc = b.doc
+
+		// Moving down: overIndex+1 so moveNodes lands after B (not a no-op)
+		expect(resolveDropTarget(doc, a.layerId, b.layerId)).toEqual({
+			parentId: null,
+			index: 2,
+		})
+		// Moving up: insert at over's index
+		expect(resolveDropTarget(doc, b.layerId, a.layerId)).toEqual({
+			parentId: null,
+			index: 0,
+		})
+	})
+
+	it('resolveDropTarget: nested layer on parent layer moves to parent sibling slot', () => {
+		let doc = createEmptyDocument()
+		const parent = createLayer(doc, { name: 'Parent' })
+		doc = parent.doc
+		const child = createLayer(doc, {
+			name: 'Child',
+			parentId: parent.layerId,
+		})
+		doc = child.doc
+
+		expect(resolveDropTarget(doc, child.layerId, parent.layerId)).toEqual({
+			parentId: null,
+			index: 0,
+		})
+	})
+
 	it('resolveDropTarget: drop on sibling inserts at sibling index', () => {
 		let doc = createEmptyDocument()
 		const layer = createLayer(doc, { name: 'L' })
@@ -254,8 +289,29 @@ describe('domain tree', () => {
 
 		expect(resolveDropTarget(doc, aId, bId)).toEqual({
 			parentId: layer.layerId,
-			index: 1,
+			index: 2,
+		})
+		expect(resolveDropTarget(doc, bId, aId)).toEqual({
+			parentId: layer.layerId,
+			index: 0,
 		})
 		expect(resolveDropTarget(doc, aId, aId)).toBeNull()
+	})
+
+	it('moveNodes + resolveDropTarget: downward sibling swap actually moves', () => {
+		let doc = createEmptyDocument()
+		const a = createLayer(doc, { name: 'A' })
+		doc = a.doc
+		const b = createLayer(doc, { name: 'B' })
+		doc = b.doc
+		const target = resolveDropTarget(doc, a.layerId, b.layerId)
+		expect(target).not.toBeNull()
+		if (!target) throw new Error('missing target')
+		doc = moveNodes(doc, {
+			ids: [a.layerId],
+			targetParentId: target.parentId,
+			index: target.index,
+		})
+		expect(doc.rootChildren).toEqual([b.layerId, a.layerId])
 	})
 })

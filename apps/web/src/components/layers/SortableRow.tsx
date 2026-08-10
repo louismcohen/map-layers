@@ -1,7 +1,6 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import {
-    Bars2Icon,
     ChevronRightIcon,
     EllipsisVerticalIcon,
     EyeIcon,
@@ -76,6 +75,7 @@ export function SortableRow({
         isDragging,
     } = useSortable({
         id,
+        disabled: editing,
     });
     const [draft, setDraft] = useState(node.name);
 
@@ -91,25 +91,18 @@ export function SortableRow({
             style={{
                 transform: CSS.Transform.toString(transform),
                 transition,
-                paddingLeft: 8 + depth * 14,
+                paddingLeft: depth * 32,
             }}
             className={cn(
                 'group/row relative rounded-lg',
+                !editing && 'cursor-grab active:cursor-grabbing',
                 selected && 'bg-accent/80',
                 isDragging && 'opacity-60',
             )}
+            {...attributes}
+            {...listeners}
         >
             <div className='flex items-center gap-1 px-1 py-1'>
-                <button
-                    type='button'
-                    className='flex h-5 w-5 shrink-0 cursor-grab items-center justify-center text-muted-foreground hover:text-foreground active:cursor-grabbing'
-                    aria-label='Drag'
-                    {...attributes}
-                    {...listeners}
-                >
-                    <Bars2Icon className='h-3.5 w-3.5' aria-hidden />
-                </button>
-
                 {isLayer ? (
                     <>
                         <button
@@ -169,7 +162,7 @@ export function SortableRow({
                         type='button'
                         onClick={onToggleVisible}
                         className={cn(
-                            'flex h-5 w-5 shrink-0 items-center justify-center rounded opacity-0 transition-opacity duration-100 ease-out group-hover/row:opacity-100 focus-visible:opacity-100',
+                            'flex size-5 shrink-0 items-center justify-center rounded opacity-0 transition-opacity duration-100 ease-out group-hover/row:opacity-100 focus-visible:opacity-100',
                             node.visible
                                 ? 'text-foreground hover:text-foreground'
                                 : 'text-muted-foreground hover:text-foreground',
@@ -179,9 +172,9 @@ export function SortableRow({
                         title={node.visible ? 'Hide' : 'Show'}
                     >
                         {node.visible ? (
-                            <EyeIcon className='h-3.5 w-3.5' aria-hidden />
+                            <EyeIcon className='size-4' aria-hidden />
                         ) : (
-                            <EyeSlashIcon className='h-3.5 w-3.5' aria-hidden />
+                            <EyeSlashIcon className='size-4' aria-hidden />
                         )}
                     </button>
                 ) : null}
@@ -191,12 +184,12 @@ export function SortableRow({
                             <Button
                                 type='button'
                                 variant='ghost'
-                                size='icon-xs'
+                                size='icon-sm'
                                 className=''
                                 aria-label='More'
                             >
                                 <EllipsisVerticalIcon
-                                    className='h-3.5 w-3.5'
+                                    className='size-4'
                                     aria-hidden
                                 />
                             </Button>
