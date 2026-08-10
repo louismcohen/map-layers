@@ -23,12 +23,11 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { SIDEBAR_WIDTH_CSS } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 
 const SIDEBAR_COOKIE_NAME = 'sidebar_state';
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
-const SIDEBAR_WIDTH = SIDEBAR_WIDTH_CSS;
+const SIDEBAR_WIDTH = '400px';
 const SIDEBAR_WIDTH_MOBILE = '18rem';
 const SIDEBAR_WIDTH_ICON = '3rem';
 const SIDEBAR_KEYBOARD_SHORTCUT = 'b';
@@ -278,7 +277,7 @@ function SidebarTrigger({
             data-sidebar='trigger'
             data-slot='sidebar-trigger'
             variant='ghost'
-            size='icon-sm'
+            size='icon-lg'
             className={cn(className)}
             onClick={(event) => {
                 onClick?.(event);

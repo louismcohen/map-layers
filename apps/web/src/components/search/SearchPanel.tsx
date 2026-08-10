@@ -51,9 +51,12 @@ export function SearchPanel({ mapRef }: SearchPanelProps) {
         <div className='flex min-h-0 flex-1 flex-col overflow-hidden'>
             <div className='shrink-0 border-b border-sidebar-border px-3 py-2'>
                 <div className='mb-2 flex items-center justify-between gap-2'>
-                    <h2 className='text-xs font-semibold tracking-wide text-muted-foreground uppercase'>
+                    <h1 className='font-heading text-sm font-semibold tracking-wide'>
+                        Search Places
+                    </h1>
+                    {/* <h2 className='text-xs font-semibold tracking-wide text-muted-foreground uppercase'>
                         Search places
-                    </h2>
+                    </h2> */}
                     {searchPreview ? (
                         <span
                             className='inline-flex items-center gap-1.5 text-[11px] text-muted-foreground'
