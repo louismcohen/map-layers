@@ -3,8 +3,13 @@ import { collectDescendantIds, findExistingMapboxIds, getLayer, getParentId } fr
 import {
 	DEFAULT_PLACE_COLOR,
 	type Document,
+	type IsochroneDraft,
+	type IsochroneMetric,
+	type IsochroneNode,
+	type IsochroneProfile,
 	LAYER_COLOR_PALETTE,
 	type LayerNode,
+	metersToMiles,
 	type NodeId,
 	type PlaceDraft,
 	type PlaceNode,
@@ -265,4 +270,75 @@ export function addPlaces(doc: Document, input: AddPlacesInput): AddPlacesResult
 	}
 
 	return { doc: next, addedIds, skippedMapboxIds }
+}
+
+export type AddIsochroneInput = {
+	draft: IsochroneDraft
+	targetParentId?: NodeId | null
+	index?: number
+}
+
+export function addIsochrone(
+	doc: Document,
+	input: AddIsochroneInput,
+): { doc: Document; id: NodeId } {
+	const next = cloneDoc(doc)
+	const parentId = input.targetParentId === undefined ? null : input.targetParentId
+	const list = getChildList(next, parentId)
+	const index = input.index ?? list.length
+	const id = createId('isochrone')
+	const node: IsochroneNode = {
+		id,
+		kind: 'isochrone',
+		name: input.draft.name,
+		center: input.draft.center,
+		profile: input.draft.profile,
+		metric: input.draft.metric,
+		contours: [...input.draft.contours],
+		geojson: input.draft.geojson,
+		color: input.draft.color,
+		visible: input.draft.visible,
+	}
+	next.nodes[id] = node
+	list.splice(index, 0, id)
+	return { doc: next, id }
+}
+
+export function setIsochroneVisible(doc: Document, id: NodeId, visible: boolean): Document {
+	const next = cloneDoc(doc)
+	const node = next.nodes[id]
+	if (node?.kind !== 'isochrone') throw new Error(`Isochrone not found: ${id}`)
+	node.visible = visible
+	return next
+}
+
+export function setIsochroneColor(doc: Document, id: NodeId, color: string): Document {
+	const next = cloneDoc(doc)
+	const node = next.nodes[id]
+	if (node?.kind !== 'isochrone') throw new Error(`Isochrone not found: ${id}`)
+	node.color = color
+	return next
+}
+
+const PROFILE_LABEL: Record<IsochroneProfile, string> = {
+	walking: 'walk',
+	cycling: 'bike',
+	driving: 'drive',
+}
+
+/** Auto-name from contour + profile, e.g. `15 min walk` / `1 mi bike`. Distance contours are meters. */
+export function formatIsochroneName(
+	profile: IsochroneProfile,
+	metric: IsochroneMetric,
+	contours: number[],
+): string {
+	const largest = contours.length > 0 ? Math.max(...contours) : 0
+	const mode = PROFILE_LABEL[profile]
+	if (metric === 'time') return `${largest} min ${mode}`
+	const miles = metersToMiles(largest)
+	const label =
+		Number.isInteger(miles) || Math.abs(miles - Math.round(miles)) < 0.05
+			? String(Math.round(miles))
+			: miles.toFixed(1)
+	return `${label} mi ${mode}`
 }

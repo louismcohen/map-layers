@@ -3,10 +3,10 @@
 ## Status
 
 - Last updated: 2026-08-09
-- Implemented: living docs; monorepo; domain (+ `resolveDropTarget`); Zustand/IndexedDB; Mapbox (LA default + geolocation); layers panel (**combined color + optional Maki icon** via `LayerStylePicker` + **react-color** `GithubPicker`; **whole-row** drag reorder; Heroicons for chevron expand / eye visibility); **filled** pins with Maki glyphs (place `maki`, overridable by nearest ancestor layer `maki`); Search Box with on-map preview pins (random color reused for new layers; **clear** control on search input); fit bounds; modals/toasts; UI orchestration hooks (`usePlaceSearch`, `useFlyToUserOnce`) + shared `mapCamera` helpers; **shadcn/ui (base-rhea / taupe, always light)** chrome — **floating `Sidebar`** (`AppSidebar`: search + layers) over full-bleed map, inset offset by `--sidebar-width`
+- Implemented: living docs; monorepo; domain (+ `resolveDropTarget`); Zustand/IndexedDB; Mapbox (LA default + geolocation); layers panel (**combined color + optional Maki icon** via `LayerStylePicker` + **react-color** `GithubPicker`; **whole-row** drag reorder; Heroicons for chevron expand / eye visibility); **filled** pins with Maki glyphs (place `maki`, overridable by nearest ancestor layer `maki`); Search Box with on-map preview pins (random color reused for new layers; **clear** control on search input); **isochrones** (time + distance; walk/bike/drive; user-chosen minutes/miles; create from search-row icon or place `…` menu; GeoJSON `Source`/`Layer`; provider-isolated Mapbox client); fit bounds (places/layers only); modals/toasts; UI orchestration hooks (`usePlaceSearch`, `useIsochroneCreate`, `useFlyToUserOnce`) + shared `mapCamera` helpers; **shadcn/ui (base-rhea / taupe, always light)** chrome — **floating `Sidebar`** (`AppSidebar`: search + layers) over full-bleed map, inset offset by `--sidebar-width`
 - In progress: none
-- Next: optional polish (layer opacity, clustering, isochrones)
-- Deferred: see [Explicitly deferred](#explicitly-deferred) and [Future: isochrone / isodistance](#future-isochrone--isodistance-architecture-fit)
+- Next: optional polish (layer opacity, clustering)
+- Deferred: see [Explicitly deferred](#explicitly-deferred)
 
 ---
 
@@ -77,7 +77,7 @@ map-layers/
 | Layer | Responsibility |
 | --- | --- |
 | `packages/domain` | Pure document/tree rules (mutations, selectors, `resolveDropTarget`) |
-| `lib/` | I/O adapters (`mapboxSearch`) and Mapbox camera helpers (`mapCamera`) |
+| `lib/` | I/O adapters (`mapboxSearch`, `isochrone/` provider) and Mapbox camera helpers (`mapCamera`) |
 | `store/` | Zustand: document + selection + `searchPreview`; wraps domain; toasts via sonner |
 | `hooks/` | React lifecycle + store coordination (`usePlaceSearch`, `useLocation`, camera policies) |
 | `components/` | Presentational UI: props/events in, render out (`components/ui` = shadcn primitives) |
@@ -90,7 +90,7 @@ No backend package in v1.
 
 Flat node map + ordered child ID lists (same pattern as Figma: easy move/reparent without deep immutable clones).
 
-**Discriminated union from day one** so future geometry types (isochrones, etc.) slot in without rewriting the tree:
+**Discriminated union** so geometry leaf kinds slot in without rewriting the tree:
 
 ```ts
 type NodeId = string;
@@ -107,19 +107,31 @@ type PlaceNode = {
   raw?: unknown; // trimmed Search Box payload if useful later
 };
 
+type IsochroneNode = {
+  id: NodeId;
+  kind: 'isochrone';
+  name: string;
+  center: { lng: number; lat: number };
+  profile: 'walking' | 'cycling' | 'driving';
+  metric: 'time' | 'distance';
+  contours: number[]; // minutes or meters (user-chosen single value at create)
+  geojson: FeatureCollection; // stored from provider response
+  color: string; // used when at root; ignored for paint when under a layer
+  visible: boolean; // own toggle; ANDed with ancestor layers when nested
+};
+
 type LayerNode = {
   id: NodeId;
   kind: 'layer';
   name: string;
   visible: boolean; // own toggle (effective = AND ancestors)
-  color: string; // hex; drives pins / future fills under this layer
+  color: string; // hex; drives pins / fills under this layer
   maki?: string; // optional Maki icon; when set, overrides place pin glyphs under this layer
   collapsed: boolean; // UI-only, persisted for comfort
   children: NodeId[]; // ordered: layers and/or leaf content nodes
 };
 
-/** v1: only PlaceNode is implemented. Future leaf kinds share this slot. */
-type ContentNode = PlaceNode; // later: PlaceNode | IsochroneNode | ...
+type ContentNode = PlaceNode | IsochroneNode;
 
 type Document = {
   rootChildren: NodeId[];
@@ -130,11 +142,10 @@ type Document = {
 
 ### Effective properties (derived)
 
-- **Visible:** node is shown iff every ancestor layer has `visible: true` (and for a leaf, its containing path is visible). Hidden parent ⇒ all descendants hidden on the map (Figma/Photoshop behavior).
-- **Color:** walk from leaf → parent layers; use the **nearest ancestor layer’s `color`**. Root-level places use `defaultPlaceColor`.
+- **Visible:** node is shown iff every ancestor layer has `visible: true` (and for isochrones, the node’s own `visible`). Hidden parent ⇒ all descendants hidden on the map (Figma/Photoshop behavior).
+- **Color:** walk from leaf → parent layers; use the **nearest ancestor layer’s `color`**. Root-level places use `defaultPlaceColor`. Root-level isochrones use their own `color` (panel color control like a layer). Nested isochrones inherit parent layer color.
 - **Maki icon:** walk from leaf → parent layers; use the **nearest ancestor layer with `maki` set**. If none, use the place’s Search Box `maki` (UI falls back to `marker`). Nested layer icon overrides parent for its subtree only.
 - Nested layer with its own color overrides parent for its subtree only.
-- Same cascade applies later to GeoJSON fills/outlines (isochrones inherit layer color / opacity).
 
 ### Layer naming defaults
 
@@ -152,6 +163,8 @@ When creating a layer from search: **default name = the search query string** (t
 - `ungroupLayer(id)` — splice layer’s `children` into parent at the layer’s index; delete the layer node
 - `deleteNodes(ids)` — recursive for layers (confirm in UI); places removed from parent
 - `addPlaces({ places, targetParentId | root, index? })` — dedupe by `mapboxId` within document (skip or toast duplicates)
+- `addIsochrone({ draft, targetParentId | root, index? })` — insert independent isochrone leaf (stores GeoJSON + params)
+- `setIsochroneVisible` / `setIsochroneColor` — root isochrone chrome; nested paint still inherits layer color
 
 ---
 
@@ -201,14 +214,14 @@ Port patterns from `~/Developer/yelp-combinator-frontend` (not a hard dependency
 - Optional: Supercluster + `ClusterMarker` if pin density gets high; start without clustering, add if needed
 - Click pin → select place in tree + lightweight detail popover (name, address, “reveal in layers”)
 
-Only **effectively visible** places render as markers.
+Only **effectively visible** places and isochrones render.
 
-**Render split (v1 implements points only; polygons reserved):**
+**Render split:**
 
 | Content kind | Mapbox mechanism |
 | --- | --- |
-| `place` (points) | `react-map-gl` HTML `<Marker>` (current plan) |
-| Future isochrone / isodistance (polygons) | `Source` + `Layer` (`fill` / `line`) fed by stored GeoJSON |
+| `place` (points) | `react-map-gl` HTML `<Marker>` |
+| `isochrone` (polygons) | `Source` + `Layer` (`fill` / `line`) from stored GeoJSON, under markers |
 
 Layer groups stay DOM-tree UI only; they never become Mapbox style layers. Contours hang off the same tree as leaves and paint via GL sources keyed by node id.
 
@@ -238,6 +251,7 @@ Layer groups stay DOM-tree UI only; they never become Mapbox style layers. Conto
 ```
 
 - **Floating shadcn `Sidebar`** (`variant="floating"`) via `AppSidebar` + `SidebarProvider` / `SidebarInset`; width `--sidebar-width` (~300px / `18.75rem`), with the floating `p-2` gutter so the map shows around the rounded panel.
+- **`AppSidebar` split:** `SearchPanel` always top, `LayersPanel` always bottom (`mt-auto`); each sizes to its content and caps at **50%** of sidebar height (overflow scrolls inside the panel).
 - Map is **full-bleed** under the chrome; inset overlays (locate, place detail, toasts) sit in `SidebarInset` (transparent, pointer-events gated) so controls stay clear of the panel.
 - Desktop: collapsible offcanvas (`⌘/Ctrl+B`, rail); mobile: sheet + `SidebarTrigger`.
 - Body `overflow: hidden`, `h-svh`. Light sidebar tokens (`bg-sidebar`, etc.) — not dark glass, not purple/cream AI defaults.
@@ -296,48 +310,27 @@ Places appear as leaf rows under their layer (indent): name + menu only (no chev
 - Multi-document / projects
 - Offline maps
 - Collaboration
-- Isochrone / isodistance overlays (architecture-ready; not built in v1 — see below)
+- Isochrone: `driving-traffic`, transit, map-click center, multi-contour rings, post-create edit, fit-bounds on isochrones, auto-add place when creating from search
 
 ---
 
-## Future: isochrone / isodistance (architecture fit)
+## Isochrones (implemented)
 
-**Yes — this architecture supports it** without changing the layer-tree or visibility/color model. Contours are another **leaf content kind** in the same nested groups.
+Independent leaf content kind in the same nested tree. Immutable after create (delete + recreate).
 
-### How it would plug in
+### Create UX
 
-1. **Domain** — add a leaf node, e.g.:
+- **Search:** trailing map icon on each result → dialog → insert at **root** (isochrone only; does not add the place pin).
+- **Existing place:** `…` → “Add isochrone…” → dialog → insert as **sibling** under the same parent as that place.
+- Dialog: **profile** (walking / cycling / driving) + **metric** (time / distance) + **amount** input (minutes or miles). Single contour; miles converted to meters for the API. Limits: 1–60 min, up to ~62.1 mi. Auto-name e.g. `15 min walk` / `1 mi bike`.
 
-```ts
-type IsochroneNode = {
-  id: NodeId;
-  kind: 'isochrone'; // or 'isodistance'
-  name: string;
-  center: { lng: number; lat: number };
-  profile: 'walking' | 'cycling' | 'driving';
-  contours: number[]; // minutes or meters
-  geojson: GeoJSON.FeatureCollection; // from Mapbox Isochrone API
-};
-```
+### Provider
 
-Widen `ContentNode` to `PlaceNode | IsochroneNode`. Tree mutations (`move`, `delete`, visibility cascade, ungroup) already operate on `NodeId`s and do not care about geometry.
+`IsochroneProvider` interface in `apps/web/src/lib/isochrone/`; current impl `mapboxIsochroneProvider` calls [Mapbox Isochrone API](https://docs.mapbox.com/api/navigation/isochrone/) with `polygons=true` and `generalize=200`. Swap/replace without domain changes.
 
-2. **API** — thin client for [Mapbox Isochrone API](https://docs.mapbox.com/api/navigation/isochrone/) (`/isochrone/v1/{profile}/{lon},{lat}`). Creation UI: pick center (map click or existing place), time vs distance, profile, contour steps → fetch GeoJSON → `addIsochrone` into target layer / new layer (name like `15 min walk`).
+### Persistence / ToS
 
-3. **Map** — for each effectively visible isochrone node, mount `<Source id={node.id} type="geojson" data={node.geojson}>` with fill/line layers styled from **effective layer color** (+ optional per-contour opacity). Z-order: draw polygons under HTML markers (or respect tree order via layer ordering helpers).
-
-4. **Layers panel** — new row type (polygon icon); same eye toggle / rename / delete / drag. Color still lives on the **parent layer** (or allow a local override later). Fit-bounds uses the GeoJSON bbox.
-
-5. **What already works unchanged:** nesting, show/hide cascade, reorder/reparent, ungroup, IndexedDB persistence, solo local-first model.
-
-### Caveats (not blockers)
-
-- **Two render pipelines** (HTML markers vs GL fill/line) — planned above; keep map orchestration as “collect visible leaves → dispatch by `kind`”.
-- **Payload size** — Isochrone GeoJSON is larger than place points; IndexedDB is fine for moderate counts; if many contours, consider storing params + refetch, or simplifying geometry.
-- **Mapbox terms** — cache/store Isochrone responses only as their ToS allows (same class of concern as Search Box persistence).
-- **Opacity / blend** — useful for stacked contours; deferred with other layer chrome, but color cascade already covers the main visual link.
-
-**v1 commitment:** do not build isochrones yet; do keep `ContentNode` as an extensible union and a single “visible leaves → render” map path so this lands as an additive feature.
+Store full GeoJSON plus `center` / `profile` / `metric` / `contours` on the node (IndexedDB). Mapbox ToS generally discourage caching service content and Isochrone has no permanent-storage flag; acceptable for this solo local-first prototype — params are retained so a future refetch path does not need a schema break. Results are always displayed on a Mapbox map.
 
 ---
 

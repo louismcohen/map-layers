@@ -1,18 +1,31 @@
 import { describe, expect, it } from 'vitest'
 import { createEmptyDocument } from './document'
 import {
+	addIsochrone,
 	addPlaces,
 	createLayer,
 	deleteNodes,
+	formatIsochroneName,
 	moveNodes,
 	renameNode,
+	setIsochroneColor,
+	setIsochroneVisible,
 	setLayerColor,
 	setLayerMaki,
 	setLayerVisible,
 	ungroupLayer,
 } from './mutations'
 import { resolveDropTarget } from './resolveDropTarget'
-import { getEffectiveColor, getEffectiveMaki, isEffectivelyVisible, listVisiblePlaces } from './selectors'
+import {
+	getEffectiveColor,
+	getEffectiveMaki,
+	getParentId,
+	isEffectivelyVisible,
+	listVisibleIsochrones,
+	listVisiblePlaces,
+} from './selectors'
+import type { IsochroneGeoJSON } from './types'
+import { milesToMeters } from './types'
 
 describe('domain tree', () => {
 	it('creates layers and places with effective color/visibility', () => {
@@ -313,5 +326,60 @@ describe('domain tree', () => {
 			index: target.index,
 		})
 		expect(doc.rootChildren).toEqual([b.layerId, a.layerId])
+	})
+
+	const emptyGeojson: IsochroneGeoJSON = { type: 'FeatureCollection', features: [] }
+
+	it('adds isochrones with root color and nested inheritance', () => {
+		let doc = createEmptyDocument()
+		const root = addIsochrone(doc, {
+			draft: {
+				name: '30 min walk',
+				center: { lng: -122, lat: 37 },
+				profile: 'walking',
+				metric: 'time',
+				contours: [15],
+				geojson: emptyGeojson,
+				color: '#da2007',
+				visible: true,
+			},
+		})
+		doc = root.doc
+		expect(getEffectiveColor(doc, root.id)).toBe('#da2007')
+		expect(listVisibleIsochrones(doc)).toHaveLength(1)
+
+		doc = setIsochroneVisible(doc, root.id, false)
+		expect(listVisibleIsochrones(doc)).toHaveLength(0)
+		doc = setIsochroneVisible(doc, root.id, true)
+		doc = setIsochroneColor(doc, root.id, '#136f63')
+		expect(getEffectiveColor(doc, root.id)).toBe('#136f63')
+
+		const layer = createLayer(doc, { name: 'Area', color: '#1f01b9' })
+		doc = layer.doc
+		const nested = addIsochrone(doc, {
+			targetParentId: layer.layerId,
+			draft: {
+				name: '5 mi bike',
+				center: { lng: -122, lat: 37 },
+				profile: 'cycling',
+				metric: 'distance',
+				contours: [milesToMeters(5)],
+				geojson: emptyGeojson,
+				color: '#ec9916',
+				visible: true,
+			},
+		})
+		doc = nested.doc
+		expect(getParentId(doc, nested.id)).toBe(layer.layerId)
+		expect(getEffectiveColor(doc, nested.id)).toBe('#1f01b9')
+
+		doc = setLayerVisible(doc, layer.layerId, false)
+		expect(isEffectivelyVisible(doc, nested.id)).toBe(false)
+	})
+
+	it('formats isochrone names', () => {
+		expect(formatIsochroneName('walking', 'time', [15])).toBe('15 min walk')
+		expect(formatIsochroneName('cycling', 'distance', [milesToMeters(5)])).toBe('5 mi bike')
+		expect(formatIsochroneName('driving', 'distance', [milesToMeters(0.5)])).toBe('0.5 mi drive')
 	})
 })

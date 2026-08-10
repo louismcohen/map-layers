@@ -1,4 +1,11 @@
-import type { DocNode, Document, LayerNode, NodeId, PlaceNode } from './types'
+import type {
+	DocNode,
+	Document,
+	IsochroneNode,
+	LayerNode,
+	NodeId,
+	PlaceNode,
+} from './types'
 
 export function getNode(doc: Document, id: NodeId): DocNode | undefined {
 	return doc.nodes[id]
@@ -12,6 +19,11 @@ export function getLayer(doc: Document, id: NodeId): LayerNode | undefined {
 export function getPlace(doc: Document, id: NodeId): PlaceNode | undefined {
 	const node = doc.nodes[id]
 	return node?.kind === 'place' ? node : undefined
+}
+
+export function getIsochrone(doc: Document, id: NodeId): IsochroneNode | undefined {
+	const node = doc.nodes[id]
+	return node?.kind === 'isochrone' ? node : undefined
 }
 
 export function getParentId(doc: Document, id: NodeId): NodeId | null {
@@ -40,6 +52,7 @@ export function isEffectivelyVisible(doc: Document, id: NodeId): boolean {
 	if (!node) return false
 
 	if (node.kind === 'layer' && !node.visible) return false
+	if (node.kind === 'isochrone' && !node.visible) return false
 
 	for (const ancestorId of getAncestorLayerIds(doc, id)) {
 		const ancestor = getLayer(doc, ancestorId)
@@ -49,8 +62,8 @@ export function isEffectivelyVisible(doc: Document, id: NodeId): boolean {
 }
 
 /**
- * Nearest ancestor layer color, or document default for root-level places.
- * For a layer itself, returns its own color.
+ * Nearest ancestor layer color; root-level places use document default;
+ * root-level isochrones use their own color. Layers return their own color.
  */
 export function getEffectiveColor(doc: Document, id: NodeId): string {
 	const node = doc.nodes[id]
@@ -59,7 +72,10 @@ export function getEffectiveColor(doc: Document, id: NodeId): string {
 	if (node.kind === 'layer') return node.color
 
 	const parentId = getParentId(doc, id)
-	if (!parentId) return doc.defaultPlaceColor
+	if (!parentId) {
+		if (node.kind === 'isochrone') return node.color
+		return doc.defaultPlaceColor
+	}
 
 	let current: NodeId | null = parentId
 	while (current) {
@@ -67,6 +83,7 @@ export function getEffectiveColor(doc: Document, id: NodeId): string {
 		if (layer) return layer.color
 		current = getParentId(doc, current)
 	}
+	if (node.kind === 'isochrone') return node.color
 	return doc.defaultPlaceColor
 }
 
@@ -110,6 +127,26 @@ export function listVisiblePlaces(doc: Document): VisiblePlace[] {
 	return result
 }
 
+export type VisibleIsochrone = {
+	isochrone: IsochroneNode
+	color: string
+	parentLayerId: NodeId | null
+}
+
+export function listVisibleIsochrones(doc: Document): VisibleIsochrone[] {
+	const result: VisibleIsochrone[] = []
+	for (const node of Object.values(doc.nodes)) {
+		if (node.kind !== 'isochrone') continue
+		if (!isEffectivelyVisible(doc, node.id)) continue
+		result.push({
+			isochrone: node,
+			color: getEffectiveColor(doc, node.id),
+			parentLayerId: getParentId(doc, node.id),
+		})
+	}
+	return result
+}
+
 export function collectDescendantIds(doc: Document, id: NodeId): NodeId[] {
 	const node = doc.nodes[id]
 	if (node?.kind !== 'layer') return []
@@ -129,7 +166,7 @@ export function collectPlaceIdsInSubtree(doc: Document, rootId: NodeId | null): 
 			const node = doc.nodes[id]
 			if (!node) continue
 			if (node.kind === 'place') places.push(node)
-			else walk(node.children)
+			else if (node.kind === 'layer') walk(node.children)
 		}
 	}
 
@@ -139,6 +176,7 @@ export function collectPlaceIdsInSubtree(doc: Document, rootId: NodeId | null): 
 		const root = doc.nodes[rootId]
 		if (root?.kind === 'place') places.push(root)
 		else if (root?.kind === 'layer') walk(root.children)
+		// isochrones have no place children
 	}
 	return places
 }

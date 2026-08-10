@@ -1,16 +1,20 @@
 import {
 	createEmptyDocument,
 	type Document,
+	addIsochrone as domainAddIsochrone,
 	addPlaces as domainAddPlaces,
 	createLayer as domainCreateLayer,
 	deleteNodes as domainDeleteNodes,
 	moveNodes as domainMoveNodes,
 	renameNode as domainRenameNode,
+	setIsochroneColor as domainSetIsochroneColor,
+	setIsochroneVisible as domainSetIsochroneVisible,
 	setLayerCollapsed as domainSetLayerCollapsed,
 	setLayerColor as domainSetLayerColor,
 	setLayerMaki as domainSetLayerMaki,
 	setLayerVisible as domainSetLayerVisible,
 	ungroupLayer as domainUngroupLayer,
+	type IsochroneDraft,
 	type NodeId,
 	type PlaceDraft,
 } from '@map-layers/domain'
@@ -65,10 +69,13 @@ type DocumentStore = {
 	setLayerColor: (id: NodeId, color: string) => void
 	setLayerMaki: (id: NodeId, maki: string | undefined) => void
 	setLayerCollapsed: (id: NodeId, collapsed: boolean) => void
+	toggleIsochroneVisible: (id: NodeId) => void
+	setIsochroneColor: (id: NodeId, color: string) => void
 	ungroupLayer: (id: NodeId) => void
 	deleteNodes: (ids: NodeId[]) => void
 	moveNodes: (ids: NodeId[], targetParentId: NodeId | null, index: number) => void
 	addPlaces: (places: PlaceDraft[], target: AddTarget) => NodeId[]
+	addIsochrone: (draft: IsochroneDraft, targetParentId?: NodeId | null) => NodeId | null
 }
 
 export const useDocumentStore = create<DocumentStore>()(
@@ -144,6 +151,16 @@ export const useDocumentStore = create<DocumentStore>()(
 			setLayerCollapsed: (id, collapsed) => {
 				setState({ document: domainSetLayerCollapsed(getState().document, id, collapsed) })
 			},
+			toggleIsochroneVisible: (id) => {
+				const node = getState().document.nodes[id]
+				if (node?.kind !== 'isochrone') return
+				setState({
+					document: domainSetIsochroneVisible(getState().document, id, !node.visible),
+				})
+			},
+			setIsochroneColor: (id, color) => {
+				setState({ document: domainSetIsochroneColor(getState().document, id, color) })
+			},
 			ungroupLayer: (id) => {
 				try {
 					setState({
@@ -214,6 +231,22 @@ export const useDocumentStore = create<DocumentStore>()(
 					)
 				}
 				return result.addedIds
+			},
+			addIsochrone: (draft, targetParentId = null) => {
+				try {
+					const { doc, id } = domainAddIsochrone(getState().document, {
+						draft,
+						targetParentId,
+					})
+					setState({ document: doc, selectedNodeIds: [id], selectedPlaceId: null })
+					getState().pushToast(`Added ${draft.name}`)
+					return id
+				} catch (error) {
+					getState().pushToast(
+						error instanceof Error ? error.message : 'Could not add isochrone',
+					)
+					return null
+				}
 			},
 		}),
 		{

@@ -1,5 +1,6 @@
-import { XMarkIcon } from '@heroicons/react/24/outline';
+import { MapIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import type { MapRef } from 'react-map-gl';
+import { IsochroneDialog } from '@/components/isochrone/IsochroneDialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -11,6 +12,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { useIsochroneCreate } from '@/hooks/useIsochroneCreate';
 import { usePlaceSearch } from '@/hooks/usePlaceSearch';
 import { cn } from '@/lib/utils';
 
@@ -38,14 +40,16 @@ export function SearchPanel({ mapRef }: SearchPanelProps) {
         addSelected,
     } = usePlaceSearch(mapRef);
 
+    const isochrone = useIsochroneCreate();
+
     const destValue =
         destination.mode === 'layer'
             ? `layer:${destination.layerId}`
             : destination.mode;
 
     return (
-        <div className='flex min-h-45 flex-col'>
-            <div className='border-b border-sidebar-border px-3 py-2'>
+        <div className='flex min-h-0 flex-col overflow-hidden'>
+            <div className='shrink-0 border-b border-sidebar-border px-3 py-2'>
                 <div className='mb-2 flex items-center justify-between gap-2'>
                     <h2 className='text-xs font-semibold tracking-wide text-muted-foreground uppercase'>
                         Search places
@@ -105,12 +109,15 @@ export function SearchPanel({ mapRef }: SearchPanelProps) {
                     {results.map((result) => {
                         const checked = selected.has(result.mapboxId);
                         return (
-                            <li key={result.mapboxId}>
+                            <li
+                                key={result.mapboxId}
+                                className='flex items-start gap-0.5'
+                            >
                                 {/* Checkbox is the control; label wraps the row for hit target. */}
                                 {/* biome-ignore lint/a11y/noLabelWithoutControl: wraps Checkbox primitive */}
                                 <label
                                     className={cn(
-                                        'flex cursor-pointer gap-2 rounded-lg px-2 py-1.5 hover:bg-accent/80',
+                                        'flex min-w-0 flex-1 cursor-pointer gap-2 rounded-lg px-2 py-1.5 hover:bg-accent/80',
                                         checked && 'bg-accent',
                                     )}
                                 >
@@ -143,84 +150,117 @@ export function SearchPanel({ mapRef }: SearchPanelProps) {
                                         ) : null}
                                     </span>
                                 </label>
+                                <Button
+                                    type='button'
+                                    variant='ghost'
+                                    size='icon-xs'
+                                    className='mt-1 shrink-0 text-muted-foreground hover:text-foreground'
+                                    aria-label={`Add isochrone for ${result.name}`}
+                                    title='Add Isochrone'
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        isochrone.openForSearch({
+                                            lng: result.coordinates.lng,
+                                            lat: result.coordinates.lat,
+                                            label: result.name,
+                                        });
+                                    }}
+                                >
+                                    <MapIcon className='size-4' />
+                                </Button>
                             </li>
                         );
                     })}
                 </ul>
             </div>
 
-            <div className='space-y-2 border-t border-sidebar-border px-3 py-2'>
-                <div className='flex gap-2'>
+            {results.length > 0 ? (
+                <div className='shrink-0 space-y-2 border-t border-sidebar-border px-3 py-2'>
+                    <div className='flex items-center gap-2'>
+                        <Button
+                            type='button'
+                            variant='ghost'
+                            size='xs'
+                            onClick={selectAll}
+                        >
+                            Select all
+                        </Button>
+                        <span className='text-xs text-muted-foreground'>
+                            {selected.size} selected
+                        </span>
+                    </div>
+
+                    <Label
+                        className='text-[11px] text-muted-foreground'
+                        htmlFor='add-dest'
+                    >
+                        Add to
+                    </Label>
+                    <Select
+                        value={destValue}
+                        onValueChange={(value) => {
+                            if (value == null) return;
+                            if (value === 'root')
+                                setDestination({ mode: 'root' });
+                            else if (value === 'new-layer')
+                                setDestination({ mode: 'new-layer' });
+                            else if (value.startsWith('layer:'))
+                                setDestination({
+                                    mode: 'layer',
+                                    layerId: value.slice(6),
+                                });
+                        }}
+                    >
+                        <SelectTrigger
+                            id='add-dest'
+                            className='w-full'
+                            size='sm'
+                        >
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value='new-layer'>New layer</SelectItem>
+                            <SelectItem value='root'>Top level</SelectItem>
+                            {layers.map((layer) => (
+                                <SelectItem
+                                    key={layer.id}
+                                    value={`layer:${layer.id}`}
+                                >
+                                    {layer.name}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+
+                    {destination.mode === 'new-layer' ? (
+                        <Input
+                            value={newLayerName}
+                            onChange={(e) => setNewLayerName(e.target.value)}
+                            placeholder='Layer name'
+                            className='h-7 text-xs'
+                        />
+                    ) : null}
+
                     <Button
                         type='button'
-                        variant='ghost'
-                        size='xs'
-                        onClick={selectAll}
-                        disabled={results.length === 0}
+                        disabled={selected.size === 0 || adding}
+                        onClick={addSelected}
+                        className='w-full'
+                        size='sm'
                     >
-                        Select all
+                        {adding ? 'Adding…' : 'Add selected'}
                     </Button>
-                    <span className='text-xs text-muted-foreground'>
-                        {selected.size} selected
-                    </span>
                 </div>
+            ) : null}
 
-                <Label
-                    className='text-[11px] text-muted-foreground'
-                    htmlFor='add-dest'
-                >
-                    Add to
-                </Label>
-                <Select
-                    value={destValue}
-                    onValueChange={(value) => {
-                        if (value == null) return;
-                        if (value === 'root') setDestination({ mode: 'root' });
-                        else if (value === 'new-layer')
-                            setDestination({ mode: 'new-layer' });
-                        else if (value.startsWith('layer:'))
-                            setDestination({
-                                mode: 'layer',
-                                layerId: value.slice(6),
-                            });
-                    }}
-                >
-                    <SelectTrigger id='add-dest' className='w-full' size='sm'>
-                        <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value='new-layer'>New layer</SelectItem>
-                        <SelectItem value='root'>Top level</SelectItem>
-                        {layers.map((layer) => (
-                            <SelectItem
-                                key={layer.id}
-                                value={`layer:${layer.id}`}
-                            >
-                                {layer.name}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-
-                {destination.mode === 'new-layer' ? (
-                    <Input
-                        value={newLayerName}
-                        onChange={(e) => setNewLayerName(e.target.value)}
-                        placeholder='Layer name'
-                        className='h-7 text-xs'
-                    />
-                ) : null}
-
-                <Button
-                    type='button'
-                    disabled={selected.size === 0 || adding}
-                    onClick={addSelected}
-                    className='w-full'
-                    size='sm'
-                >
-                    {adding ? 'Adding…' : 'Add selected'}
-                </Button>
-            </div>
+            <IsochroneDialog
+                open={isochrone.dialogOpen}
+                center={isochrone.pending?.center ?? null}
+                submitting={isochrone.submitting}
+                onCancel={isochrone.cancel}
+                onConfirm={isochrone.confirm}
+            />
         </div>
     );
 }

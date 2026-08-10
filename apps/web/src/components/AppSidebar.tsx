@@ -1,13 +1,7 @@
 import type { MapRef } from 'react-map-gl';
 import { LayersPanel } from '@/components/layers/LayersPanel';
 import { SearchPanel } from '@/components/search/SearchPanel';
-import {
-    Sidebar,
-    SidebarContent,
-    SidebarHeader,
-    SidebarRail,
-    SidebarSeparator,
-} from '@/components/ui/sidebar';
+import { Sidebar, SidebarRail, SidebarSeparator } from '@/components/ui/sidebar';
 
 type AppSidebarProps = {
     mapRef: React.RefObject<MapRef | null>;
@@ -20,13 +14,15 @@ export function AppSidebar({ mapRef }: AppSidebarProps) {
             collapsible='offcanvas'
             className='pointer-events-none **:data-[slot=sidebar-inner]:pointer-events-auto'
         >
-            <SidebarHeader className='gap-0 p-0'>
-                <SearchPanel mapRef={mapRef} />
-            </SidebarHeader>
-            <SidebarSeparator className='mx-0' />
-            <SidebarContent className='gap-0 overflow-hidden p-0'>
-                <LayersPanel mapRef={mapRef} />
-            </SidebarContent>
+            <div className='flex h-full min-h-0 flex-col overflow-hidden'>
+                <div className='flex max-h-1/2 min-h-0 shrink flex-col overflow-hidden'>
+                    <SearchPanel mapRef={mapRef} />
+                </div>
+                <SidebarSeparator className='mx-0 shrink-0' />
+                <div className='mt-auto flex max-h-1/2 min-h-0 shrink flex-col overflow-hidden'>
+                    <LayersPanel mapRef={mapRef} />
+                </div>
+            </div>
             <SidebarRail />
         </Sidebar>
     );

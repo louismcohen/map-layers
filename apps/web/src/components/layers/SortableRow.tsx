@@ -5,6 +5,7 @@ import {
     EllipsisVerticalIcon,
     EyeIcon,
     EyeSlashIcon,
+    MapIcon,
 } from '@heroicons/react/24/outline';
 import type { DocNode, NodeId } from '@map-layers/domain';
 import { useEffect, useState } from 'react';
@@ -23,6 +24,8 @@ export type SortableRowProps = {
     node: DocNode;
     id: NodeId;
     depth: number;
+    /** True when this row is a root child (isochrones get color controls). */
+    isRoot: boolean;
     selected: boolean;
     editing: boolean;
     menuOpen: boolean;
@@ -41,12 +44,14 @@ export type SortableRowProps = {
     onDelete: () => void;
     onFit: () => void;
     onCreateSublayer: () => void;
+    onAddIsochrone: () => void;
 };
 
 export function SortableRow({
     node,
     id,
     depth,
+    isRoot,
     selected,
     editing,
     menuOpen,
@@ -65,6 +70,7 @@ export function SortableRow({
     onDelete,
     onFit,
     onCreateSublayer,
+    onAddIsochrone,
 }: SortableRowProps) {
     const {
         attributes,
@@ -84,6 +90,11 @@ export function SortableRow({
     }, [node.name, editing]);
 
     const isLayer = node.kind === 'layer';
+    const isIsochrone = node.kind === 'isochrone';
+    const isPlace = node.kind === 'place';
+    const showStyle = isLayer || (isIsochrone && isRoot);
+    const showVisibility = isLayer || isIsochrone;
+    const visible = isLayer || isIsochrone ? node.visible : true;
 
     return (
         <li
@@ -104,32 +115,42 @@ export function SortableRow({
         >
             <div className='flex items-center gap-1 px-1 py-1'>
                 {isLayer ? (
-                    <>
-                        <button
-                            type='button'
-                            className='flex h-5 w-5 shrink-0 items-center justify-center text-muted-foreground hover:text-foreground'
-                            onClick={onToggleCollapsed}
-                            aria-label={node.collapsed ? 'Expand' : 'Collapse'}
-                            aria-expanded={!node.collapsed}
-                        >
-                            <ChevronRightIcon
-                                className={cn(
-                                    'h-3.5 w-3.5 transition-transform duration-200 ease-out',
-                                    !node.collapsed && 'rotate-90',
-                                )}
-                                aria-hidden
-                            />
-                        </button>
-
-                        <LayerStylePicker
-                            color={node.color}
-                            maki={node.maki}
-                            open={styleOpen}
-                            onOpenChange={onStyleOpenChange}
-                            onPickColor={onPickColor}
-                            onPickMaki={onPickMaki}
+                    <button
+                        type='button'
+                        className='flex h-5 w-5 shrink-0 items-center justify-center text-muted-foreground hover:text-foreground'
+                        onClick={onToggleCollapsed}
+                        aria-label={node.collapsed ? 'Expand' : 'Collapse'}
+                        aria-expanded={!node.collapsed}
+                    >
+                        <ChevronRightIcon
+                            className={cn(
+                                'h-3.5 w-3.5 transition-transform duration-200 ease-out',
+                                !node.collapsed && 'rotate-90',
+                            )}
+                            aria-hidden
                         />
-                    </>
+                    </button>
+                ) : isIsochrone ? (
+                    <span
+                        className='flex h-5 w-5 shrink-0 items-center justify-center text-muted-foreground'
+                        aria-hidden
+                    >
+                        <MapIcon className='h-3.5 w-3.5' />
+                    </span>
+                ) : (
+                    <span className='h-5 w-5 shrink-0' aria-hidden />
+                )}
+
+                {showStyle ? (
+                    <LayerStylePicker
+                        color={node.color}
+                        maki={isLayer ? node.maki : undefined}
+                        open={styleOpen}
+                        onOpenChange={onStyleOpenChange}
+                        onPickColor={onPickColor}
+                        onPickMaki={onPickMaki}
+                        showIcons={isLayer}
+                    />
                 ) : null}
 
                 {editing ? (
@@ -157,21 +178,21 @@ export function SortableRow({
                         <span className='truncate'>{node.name}</span>
                     </button>
                 )}
-                {isLayer ? (
+                {showVisibility ? (
                     <button
                         type='button'
                         onClick={onToggleVisible}
                         className={cn(
                             'flex size-5 shrink-0 items-center justify-center rounded opacity-0 transition-opacity duration-100 ease-out group-hover/row:opacity-100 focus-visible:opacity-100',
-                            node.visible
+                            visible
                                 ? 'text-foreground hover:text-foreground'
                                 : 'text-muted-foreground hover:text-foreground',
                         )}
-                        aria-label={node.visible ? 'Hide layer' : 'Show layer'}
-                        aria-pressed={node.visible}
-                        title={node.visible ? 'Hide' : 'Show'}
+                        aria-label={visible ? 'Hide' : 'Show'}
+                        aria-pressed={visible}
+                        title={visible ? 'Hide' : 'Show'}
                     >
-                        {node.visible ? (
+                        {visible ? (
                             <EyeIcon className='size-4' aria-hidden />
                         ) : (
                             <EyeSlashIcon className='size-4' aria-hidden />
@@ -206,12 +227,19 @@ export function SortableRow({
                                 </DropdownMenuItem>
                             </>
                         ) : null}
+                        {isPlace ? (
+                            <DropdownMenuItem onClick={onAddIsochrone}>
+                                Add Isochrone…
+                            </DropdownMenuItem>
+                        ) : null}
                         <DropdownMenuItem onClick={onStartEdit}>
                             Rename
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={onFit}>
-                            Fit to map
-                        </DropdownMenuItem>
+                        {!isIsochrone ? (
+                            <DropdownMenuItem onClick={onFit}>
+                                Fit to Map
+                            </DropdownMenuItem>
+                        ) : null}
                         <DropdownMenuItem
                             variant='destructive'
                             onClick={onDelete}
