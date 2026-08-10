@@ -251,7 +251,7 @@ Layer groups stay DOM-tree UI only; they never become Mapbox style layers. Conto
 ```
 
 - **Floating shadcn `Sidebar`** (`variant="floating"`) via `AppSidebar` + `SidebarProvider` / `SidebarInset`; width `--sidebar-width` (~300px / `18.75rem`), with the floating `p-2` gutter so the map shows around the rounded panel.
-- **`AppSidebar` split:** `SearchPanel` always top, `LayersPanel` always bottom (`mt-auto`); each sizes to its content and caps at **50%** of sidebar height (overflow scrolls inside the panel).
+- **`AppSidebar` split:** `SearchPanel` always top; separator + `LayersPanel` pinned to the bottom (`mt-auto`). Each sizes to content and may exceed half the sidebar when the other is smaller; when both need space they shrink together (≈50% ceiling). Overflow scrolls inside each panel.
 - Map is **full-bleed** under the chrome; inset overlays (locate, place detail, toasts) sit in `SidebarInset` (transparent, pointer-events gated) so controls stay clear of the panel.
 - Desktop: collapsible offcanvas (`⌘/Ctrl+B`, rail); mobile: sheet + `SidebarTrigger`.
 - Body `overflow: hidden`, `h-svh`. Light sidebar tokens (`bg-sidebar`, etc.) — not dark glass, not purple/cream AI defaults.
@@ -263,7 +263,7 @@ Layer groups stay DOM-tree UI only; they never become Mapbox style layers. Conto
 Each row:
 
 - Whole-row drag (no grab handle; disabled while renaming; `PointerSensor` distance threshold keeps clicks on controls working)
-- Expand/collapse (`ChevronRightIcon`, CSS `rotate-90` when open; layers only)
+- Expand/collapse (`ChevronRightIcon`, CSS `rotate-90` when open; layers only); child rows animate height via Motion `AnimatePresence` (`height: 0` ↔ `auto`, ~200ms)
 - Visibility toggle (`EyeIcon` / `EyeSlashIcon`; layers only)
 - Style control (layers only): colored Maki glyph → one popover with **react-color** `GithubPicker` + filterable icon grid; **Auto** clears icon override so place icons show (`LayerStylePicker`)
 - Name (inline rename on double-click / Enter)

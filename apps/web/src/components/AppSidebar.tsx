@@ -15,11 +15,11 @@ export function AppSidebar({ mapRef }: AppSidebarProps) {
             className='pointer-events-none **:data-[slot=sidebar-inner]:pointer-events-auto'
         >
             <div className='flex h-full min-h-0 flex-col overflow-hidden'>
-                <div className='flex max-h-1/2 min-h-0 shrink flex-col overflow-hidden'>
+                <div className='flex min-h-0 shrink flex-col overflow-hidden'>
                     <SearchPanel mapRef={mapRef} />
                 </div>
-                <SidebarSeparator className='mx-0 shrink-0' />
-                <div className='mt-auto flex max-h-1/2 min-h-0 shrink flex-col overflow-hidden'>
+                <div className='mt-auto flex min-h-0 shrink flex-col overflow-hidden'>
+                    <SidebarSeparator className='mx-0 shrink-0' />
                     <LayersPanel mapRef={mapRef} />
                 </div>
             </div>

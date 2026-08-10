@@ -15,6 +15,7 @@ import {
 	type NodeId,
 	resolveDropTarget,
 } from '@map-layers/domain'
+import { AnimatePresence } from 'motion/react'
 import { useMemo, useState } from 'react'
 import type { MapRef } from 'react-map-gl'
 import { IsochroneDialog } from '@/components/isochrone/IsochroneDialog'
@@ -80,7 +81,7 @@ export function LayersPanel({ mapRef }: LayersPanelProps) {
 	}
 
 	return (
-		<div className="flex min-h-0 flex-col overflow-hidden">
+		<div className="flex min-h-0 flex-1 flex-col overflow-hidden">
 			<div className="flex shrink-0 items-center justify-between gap-2 px-3 py-2">
 				<h1 className="font-heading text-sm font-semibold tracking-wide">Layers</h1>
 				<Button type="button" size="xs" onClick={() => setCreateOpen(true)}>
@@ -100,90 +101,93 @@ export function LayersPanel({ mapRef }: LayersPanelProps) {
 						onDragEnd={onDragEnd}
 					>
 						<SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
-							<ul className="space-y-0.5">
-								{rows.map((row) => (
-									<SortableRow
-										key={row.id}
-										node={row.node}
-										id={row.id}
-										depth={row.depth}
-										isRoot={row.depth === 0}
-										selected={
-											selectedNodeIds.includes(row.id) || selectedPlaceId === row.id
-										}
-										editing={editingId === row.id}
-										menuOpen={menuId === row.id}
-										styleOpen={stylePickerId === row.id}
-										onSelect={() => {
-											setSelectedNodeIds([row.id])
-											if (row.node.kind === 'place') selectPlace(row.id)
-											else selectPlace(null)
-										}}
-										onToggleVisible={() => {
-											if (row.node.kind === 'layer') toggleLayerVisible(row.id)
-											else if (row.node.kind === 'isochrone')
-												toggleIsochroneVisible(row.id)
-										}}
-										onToggleCollapsed={() => {
-											if (row.node.kind !== 'layer') return
-											setLayerCollapsed(row.id, !row.node.collapsed)
-										}}
-										onStartEdit={() => {
-											setEditingId(row.id)
-											setMenuId(null)
-											setStylePickerId(null)
-										}}
-										onCommitEdit={(name) => {
-											renameNode(row.id, name)
-											setEditingId(null)
-										}}
-										onCancelEdit={() => setEditingId(null)}
-										onMenuOpenChange={(open) => {
-											setMenuId(open ? row.id : null)
-											if (open) setStylePickerId(null)
-										}}
-										onStyleOpenChange={(open) => {
-											setStylePickerId(open ? row.id : null)
-											if (open) setMenuId(null)
-										}}
-										onPickColor={(color) => {
-											if (row.node.kind === 'layer') setLayerColor(row.id, color)
-											else if (row.node.kind === 'isochrone')
-												setIsochroneColor(row.id, color)
-										}}
-										onPickMaki={(maki) => {
-											if (row.node.kind === 'layer') setLayerMaki(row.id, maki)
-										}}
-										onUngroup={() => {
-											ungroupLayer(row.id)
-											setMenuId(null)
-										}}
-										onDelete={() => {
-											setDeleteId(row.id)
-											setMenuId(null)
-										}}
-										onFit={() => {
-											fitToNode(row.id)
-											setMenuId(null)
-										}}
-										onCreateSublayer={() => {
-											setSublayerParentId(row.id)
-											setMenuId(null)
-										}}
-										onAddIsochrone={() => {
-											if (row.node.kind !== 'place') return
-											isochrone.openForPlace(
-												{
-													lng: row.node.coordinates.lng,
-													lat: row.node.coordinates.lat,
-													label: row.node.name,
-												},
-												getParentId(document, row.id),
-											)
-											setMenuId(null)
-										}}
-									/>
-								))}
+							<ul>
+								<AnimatePresence initial={false}>
+									{rows.map((row) => (
+										<SortableRow
+											key={row.id}
+											node={row.node}
+											id={row.id}
+											depth={row.depth}
+											isRoot={row.depth === 0}
+											selected={
+												selectedNodeIds.includes(row.id) ||
+												selectedPlaceId === row.id
+											}
+											editing={editingId === row.id}
+											menuOpen={menuId === row.id}
+											styleOpen={stylePickerId === row.id}
+											onSelect={() => {
+												setSelectedNodeIds([row.id])
+												if (row.node.kind === 'place') selectPlace(row.id)
+												else selectPlace(null)
+											}}
+											onToggleVisible={() => {
+												if (row.node.kind === 'layer') toggleLayerVisible(row.id)
+												else if (row.node.kind === 'isochrone')
+													toggleIsochroneVisible(row.id)
+											}}
+											onToggleCollapsed={() => {
+												if (row.node.kind !== 'layer') return
+												setLayerCollapsed(row.id, !row.node.collapsed)
+											}}
+											onStartEdit={() => {
+												setEditingId(row.id)
+												setMenuId(null)
+												setStylePickerId(null)
+											}}
+											onCommitEdit={(name) => {
+												renameNode(row.id, name)
+												setEditingId(null)
+											}}
+											onCancelEdit={() => setEditingId(null)}
+											onMenuOpenChange={(open) => {
+												setMenuId(open ? row.id : null)
+												if (open) setStylePickerId(null)
+											}}
+											onStyleOpenChange={(open) => {
+												setStylePickerId(open ? row.id : null)
+												if (open) setMenuId(null)
+											}}
+											onPickColor={(color) => {
+												if (row.node.kind === 'layer') setLayerColor(row.id, color)
+												else if (row.node.kind === 'isochrone')
+													setIsochroneColor(row.id, color)
+											}}
+											onPickMaki={(maki) => {
+												if (row.node.kind === 'layer') setLayerMaki(row.id, maki)
+											}}
+											onUngroup={() => {
+												ungroupLayer(row.id)
+												setMenuId(null)
+											}}
+											onDelete={() => {
+												setDeleteId(row.id)
+												setMenuId(null)
+											}}
+											onFit={() => {
+												fitToNode(row.id)
+												setMenuId(null)
+											}}
+											onCreateSublayer={() => {
+												setSublayerParentId(row.id)
+												setMenuId(null)
+											}}
+											onAddIsochrone={() => {
+												if (row.node.kind !== 'place') return
+												isochrone.openForPlace(
+													{
+														lng: row.node.coordinates.lng,
+														lat: row.node.coordinates.lat,
+														label: row.node.name,
+													},
+													getParentId(document, row.id),
+												)
+												setMenuId(null)
+											}}
+										/>
+									))}
+								</AnimatePresence>
 							</ul>
 						</SortableContext>
 					</DndContext>

@@ -48,7 +48,7 @@ export function SearchPanel({ mapRef }: SearchPanelProps) {
             : destination.mode;
 
     return (
-        <div className='flex min-h-0 flex-col overflow-hidden'>
+        <div className='flex min-h-0 flex-1 flex-col overflow-hidden'>
             <div className='shrink-0 border-b border-sidebar-border px-3 py-2'>
                 <div className='mb-2 flex items-center justify-between gap-2'>
                     <h2 className='text-xs font-semibold tracking-wide text-muted-foreground uppercase'>
