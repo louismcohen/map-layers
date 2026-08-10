@@ -152,9 +152,9 @@ export function SortableRow({
                         type='button'
                         onClick={onSelect}
                         onDoubleClick={onStartEdit}
-                        className='min-w-0 flex-1 truncate text-left text-xs text-foreground'
+                        className='flex min-w-0 flex-1 items-center self-stretch text-left text-xs text-foreground'
                     >
-                        {node.name}
+                        <span className='truncate'>{node.name}</span>
                     </button>
                 )}
                 {isLayer ? (
