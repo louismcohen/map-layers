@@ -40,7 +40,7 @@ export function SearchPanel({ mapRef }: SearchPanelProps) {
 	const destValue = destination.mode === 'layer' ? `layer:${destination.layerId}` : destination.mode
 
 	return (
-		<div className="flex max-h-[45%] min-h-[180px] flex-col border-t border-sidebar-border">
+		<div className="flex max-h-[45%] min-h-[180px] flex-col">
 			<div className="border-b border-sidebar-border px-3 py-2">
 				<div className="mb-2 flex items-center justify-between gap-2">
 					<h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">

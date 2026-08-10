@@ -2,8 +2,8 @@
 
 ## Status
 
-- Last updated: 2026-08-06
-- Implemented: living docs; monorepo; domain (+ `resolveDropTarget`); Zustand/IndexedDB; Mapbox (LA default + geolocation); layers panel (**combined color + optional Maki icon** via `LayerStylePicker` + **react-color** `GithubPicker`; Heroicons for drag / chevron expand / eye visibility); **filled** pins with Maki glyphs (place `maki`, overridable by nearest ancestor layer `maki`); Search Box with on-map preview pins (random color reused for new layers); fit bounds; modals/toasts; UI orchestration hooks (`usePlaceSearch`, `useFlyToUserOnce`) + shared `mapCamera` helpers; **shadcn/ui (base-rhea / taupe, always light)** for chrome + controls
+- Last updated: 2026-08-09
+- Implemented: living docs; monorepo; domain (+ `resolveDropTarget`); Zustand/IndexedDB; Mapbox (LA default + geolocation); layers panel (**combined color + optional Maki icon** via `LayerStylePicker` + **react-color** `GithubPicker`; Heroicons for drag / chevron expand / eye visibility); **filled** pins with Maki glyphs (place `maki`, overridable by nearest ancestor layer `maki`); Search Box with on-map preview pins (random color reused for new layers); fit bounds; modals/toasts; UI orchestration hooks (`usePlaceSearch`, `useFlyToUserOnce`) + shared `mapCamera` helpers; **shadcn/ui (base-rhea / taupe, always light)** chrome — **floating `Sidebar`** (`AppSidebar`: search + layers) over full-bleed map, inset offset by `--sidebar-width`
 - In progress: none
 - Next: optional polish (layer opacity, clustering, isochrones)
 - Deferred: see [Explicitly deferred](#explicitly-deferred) and [Future: isochrone / isodistance](#future-isochrone--isodistance-architecture-fit)
@@ -12,7 +12,7 @@
 
 ## Product summary
 
-A solo, local-first web app: full-bleed Mapbox map + left layers panel. Users search for places, add one/many/all results into nested layers (or the top of the tree), then show/hide layers and assign a layer color that drives all pins under that layer.
+A solo, local-first web app: full-bleed Mapbox map with a left **floating** shadcn sidebar (search + layers). Users search for places, add one/many/all results into nested layers (or the top of the tree), then show/hide layers and assign a layer color that drives all pins under that layer.
 
 **Out of scope (v1):** accounts, sync, import/export, multiplayer.
 
@@ -227,20 +227,20 @@ Layer groups stay DOM-tree UI only; they never become Mapbox style layers. Conto
 ### Layout
 
 ```
-┌─────────────────┬──────────────────────────────────┐
-│ Layers          │                                  │
-│  [+ Layer]      │           Mapbox map             │
-│  tree…          │                                  │
-│─────────────────│     pins colored by layer        │
-│ Search places   │                                  │
-│  [query     ]   │                                  │
-│  results list   │                                  │
-│  Add to ▾       │                                  │
-└─────────────────┴──────────────────────────────────┘
+┌────────────────────────────────────────────────────┐
+│ ┌───────────────┐                                  │
+│ │ Search +      │                                  │
+│ │ Layers        │     Mapbox map (full-bleed)      │
+│ │ (floating)    │     pins colored by layer        │
+│ └───────────────┘                                  │
+│ ◄── sidebar width + p-2 gutter ──► map inset UI    │
+└────────────────────────────────────────────────────┘
 ```
 
-- Left pane ~280–320px, resizable later; **light sidebar chrome** via shadcn semantic tokens (`bg-sidebar`, `border-sidebar-border`, etc.) — not dark glass, not purple/cream AI defaults.
-- Map is the remaining viewport; body `overflow: hidden`, `h-svh`.
+- **Floating shadcn `Sidebar`** (`variant="floating"`) via `AppSidebar` + `SidebarProvider` / `SidebarInset`; width `--sidebar-width` (~300px / `18.75rem`), with the floating `p-2` gutter so the map shows around the rounded panel.
+- Map is **full-bleed** under the chrome; inset overlays (locate, place detail, toasts) sit in `SidebarInset` (transparent, pointer-events gated) so controls stay clear of the panel.
+- Desktop: collapsible offcanvas (`⌘/Ctrl+B`, rail); mobile: sheet + `SidebarTrigger`.
+- Body `overflow: hidden`, `h-svh`. Light sidebar tokens (`bg-sidebar`, etc.) — not dark glass, not purple/cream AI defaults.
 - Theme is **always light** (`:root` tokens only; no `dark` class / theme toggle in v1).
 - Layer / pin colors remain **data-driven hex** (not theme tokens). User-location marker stays semantic blue.
 

@@ -73,7 +73,7 @@ export function LayersPanel({ mapRef }: LayersPanelProps) {
 
 	return (
 		<div className="flex h-full min-h-0 flex-col">
-			<div className="flex items-center justify-between gap-2 border-b border-sidebar-border px-3 py-2">
+			<div className="flex items-center justify-between gap-2 px-3 py-2">
 				<h1 className="font-heading text-sm font-semibold tracking-wide">Layers</h1>
 				<Button type="button" size="xs" onClick={() => setCreateOpen(true)}>
 					+ Layer
