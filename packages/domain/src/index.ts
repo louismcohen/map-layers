@@ -42,6 +42,8 @@ export {
 	getParentId,
 	getPlace,
 	isEffectivelyVisible,
+	listAttachedIsochroneIds,
+	listAttachedIsochrones,
 	listLayers,
 	listVisibleIsochrones,
 	listVisiblePlaces,

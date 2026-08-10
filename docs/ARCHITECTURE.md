@@ -3,7 +3,7 @@
 ## Status
 
 - Last updated: 2026-08-09
-- Implemented: living docs; monorepo; domain (+ `resolveDropTarget`); Zustand/IndexedDB; Mapbox (LA default + geolocation); layers panel (**combined color + optional Maki icon** via `LayerStylePicker` + **react-color** `GithubPicker`; **whole-row** drag reorder; Phosphor icons for caret expand / eye visibility); **filled** pins with Maki glyphs (place `maki`, overridable by nearest ancestor layer `maki`); Search Box with on-map preview pins (random color reused for new layers; **clear** control on search input); **isochrones** (time + distance; walk/bike/drive; user-chosen minutes/miles; create from search-row icon or place `…` menu; GeoJSON `Source`/`Layer`; provider-isolated Mapbox client with **denoise + generalize + Turf polygonSmooth**); fit bounds (places/layers only); modals/toasts; UI orchestration hooks (`usePlaceSearch`, `useIsochroneCreate`, `useFlyToUserOnce`, `useMapSidebarPadding`) + shared `mapCamera` helpers; **shadcn/ui (base-rhea / taupe, always light)** chrome — **floating `Sidebar`** (`AppSidebar`: search + layers) over full-bleed map; Mapbox **left padding** = `--sidebar-width` (400px) so the visual center is the clear map strip, cleared when the sidebar collapses / on mobile
+- Implemented: living docs; monorepo; domain (+ `resolveDropTarget`); Zustand/IndexedDB; Mapbox (LA default + geolocation); layers panel (**combined color + optional Maki icon** via `LayerStylePicker` + **react-color** `GithubPicker`; **whole-row** drag reorder; Phosphor icons for caret expand / eye visibility); **filled** pins with Maki glyphs (place `maki`, overridable by nearest ancestor layer `maki`); Search Box with on-map preview pins (random color reused for new layers; **clear** control on search input); **isochrones** (time + distance; walk/bike/drive; user-chosen minutes/miles; create from search-row icon or place `…` menu; place-origin isochrones bind via `originPlaceId` — UI-nested under the place, move/delete locked, short names; GeoJSON `Source`/`Layer`; provider-isolated Mapbox client with **denoise + generalize + Turf polygonSmooth**); fit bounds (places/layers only); modals/toasts; UI orchestration hooks (`usePlaceSearch`, `useIsochroneCreate`, `useFlyToUserOnce`, `useMapSidebarPadding`) + shared `mapCamera` helpers; **shadcn/ui (base-rhea / taupe, always light)** chrome — **floating `Sidebar`** (`AppSidebar`: search + layers) over full-bleed map; Mapbox **left padding** = `--sidebar-width` (400px) so the visual center is the clear map strip, cleared when the sidebar collapses / on mobile
 - In progress: none
 - Next: optional polish (layer opacity, clustering)
 - Deferred: see [Explicitly deferred](#explicitly-deferred)
@@ -119,6 +119,7 @@ type IsochroneNode = {
   geojson: FeatureCollection; // stored from provider response
   color: string; // used when at root; ignored for paint when under a layer
   visible: boolean; // own toggle; ANDed with ancestor layers when nested
+  originPlaceId?: NodeId; // when set: UI-nested under place; move/delete follow place; cannot reparent away
 };
 
 type LayerNode = {
@@ -164,8 +165,12 @@ When creating a layer from search: **default name = the search query string** (t
 - `ungroupLayer(id)` — splice layer’s `children` into parent at the layer’s index; delete the layer node
 - `deleteNodes(ids)` — recursive for layers (confirm in UI); places removed from parent
 - `addPlaces({ places, targetParentId | root, index? })` — dedupe by `mapboxId` within document (skip or toast duplicates)
-- `addIsochrone({ draft, targetParentId | root, index? })` — insert independent isochrone leaf (stores GeoJSON + params)
+- `addIsochrone({ draft, targetParentId | root, index? })` — insert isochrone leaf (stores GeoJSON + params); optional `draft.originPlaceId` binds to a place (forces same parent as that place)
 - `setIsochroneVisible` / `setIsochroneColor` — root isochrone chrome; nested paint still inherits layer color
+- `listAttachedIsochrones` / `flattenTree({ collapsedPlaceIds? })` — UI nests place-bound isochrones under their place
+- `moveNodes` — places carry attached isochrones; attached isochrones cannot change parent
+- `deleteNodes` — deleting a place also deletes isochrones with that `originPlaceId`
+- `resolveDropTarget` — attached isochrones may only drop on their origin place or peer attachments
 
 ---
 
@@ -318,13 +323,13 @@ Places appear as leaf rows under their layer (indent): name + menu only (no chev
 
 ## Isochrones (implemented)
 
-Independent leaf content kind in the same nested tree. Immutable after create (delete + recreate).
+Independent leaf content kind in the same nested tree (only **layers** own `children`). Immutable after create (delete + recreate). Place-origin isochrones stay **siblings** of their place in the ownership tree but bind via `originPlaceId` so the layers panel nests them under the place.
 
 ### Create UX
 
-- **Search:** trailing map icon on each result → dialog → insert at **root** (isochrone only; does not add the place pin).
-- **Existing place:** `…` → “Add isochrone…” → dialog → insert as **sibling** under the same parent as that place.
-- Dialog: **profile** (walking / cycling / driving) + **metric** (time / distance) as horizontal **shadcn Tabs** with Phosphor icons + **amount** input (minutes or miles). Single contour; miles converted to meters for the API. Limits: 1–60 min, up to 60 mi (floored to nearest 5 under Mapbox’s ~62.1 mi / 100 km cap). Auto-name e.g. `20 min drive from 2219 Main Street` / `1 mi bike from Café` (falls back to `15 min walk` if no place label).
+- **Search:** trailing map icon on each result → dialog → insert at **root** with no `originPlaceId` (freely movable). Auto-name includes label when available: `20 min walk from Café`.
+- **Existing place:** `…` / place detail → “Add isochrone…” → dialog → insert as **sibling** under the same parent, with `originPlaceId = placeId`. Panel nests under the place (collapsible); short name only (`20 min walk` — origin implied by nesting). Moving/deleting the place moves/deletes attached isochrones; attached isochrones cannot be reparented away (reorder among peers / origin place only).
+- Dialog: **profile** (walking / cycling / driving) + **metric** (time / distance) as horizontal **shadcn Tabs** with Phosphor icons + **amount** input (minutes or miles). Single contour; miles converted to meters for the API. Limits: 1–60 min, up to 60 mi (floored to nearest 5 under Mapbox’s ~62.1 mi / 100 km cap).
 
 ### Provider
 

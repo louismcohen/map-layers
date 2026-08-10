@@ -1,5 +1,13 @@
 import { createId } from './document'
-import { collectDescendantIds, findExistingMapboxIds, getLayer, getParentId } from './selectors'
+import {
+	collectDescendantIds,
+	findExistingMapboxIds,
+	getLayer,
+	getParentId,
+	getPlace,
+	listAttachedIsochroneIds,
+	listAttachedIsochrones,
+} from './selectors'
 import {
 	DEFAULT_PLACE_COLOR,
 	type Document,
@@ -163,13 +171,39 @@ export type MoveNodesInput = {
 
 export function moveNodes(doc: Document, input: MoveNodesInput): Document {
 	const next = cloneDoc(doc)
-	const { ids, targetParentId } = input
+	const { targetParentId } = input
 	let index = input.index
 
-	for (const id of ids) {
+	for (const id of input.ids) {
 		if (!next.nodes[id]) throw new Error(`Node not found: ${id}`)
 		if (wouldCreateCycle(next, id, targetParentId)) {
 			throw new Error('Cannot move a layer into its own descendant')
+		}
+		const node = next.nodes[id]
+		if (node?.kind === 'isochrone' && node.originPlaceId) {
+			const origin = getPlace(next, node.originPlaceId)
+			if (!origin) throw new Error('Attached isochrone missing origin place')
+			const originParent = getParentId(next, node.originPlaceId)
+			if (targetParentId !== originParent) {
+				throw new Error('Cannot move attached isochrone away from its place')
+			}
+		}
+	}
+
+	// Places carry attached isochrones as a contiguous block after the place.
+	const ids: NodeId[] = []
+	const seen = new Set<NodeId>()
+	for (const id of input.ids) {
+		if (seen.has(id)) continue
+		ids.push(id)
+		seen.add(id)
+		const node = next.nodes[id]
+		if (node?.kind === 'place') {
+			for (const iso of listAttachedIsochrones(next, id)) {
+				if (seen.has(iso.id)) continue
+				ids.push(iso.id)
+				seen.add(iso.id)
+			}
 		}
 	}
 
@@ -213,6 +247,16 @@ export function deleteNodes(doc: Document, ids: NodeId[]): Document {
 		toDelete.add(id)
 		for (const descendant of collectDescendantIds(next, id)) {
 			toDelete.add(descendant)
+		}
+	}
+
+	// Places are leaves in the ownership tree; attached isochrones are siblings.
+	for (const id of [...toDelete]) {
+		const node = next.nodes[id]
+		if (node?.kind === 'place') {
+			for (const isoId of listAttachedIsochroneIds(next, id)) {
+				toDelete.add(isoId)
+			}
 		}
 	}
 
@@ -283,9 +327,32 @@ export function addIsochrone(
 	input: AddIsochroneInput,
 ): { doc: Document; id: NodeId } {
 	const next = cloneDoc(doc)
-	const parentId = input.targetParentId === undefined ? null : input.targetParentId
+	let parentId = input.targetParentId === undefined ? null : input.targetParentId
+	const originPlaceId = input.draft.originPlaceId
+
+	if (originPlaceId) {
+		const place = getPlace(next, originPlaceId)
+		if (!place) throw new Error(`Origin place not found: ${originPlaceId}`)
+		parentId = getParentId(next, originPlaceId)
+	}
+
 	const list = getChildList(next, parentId)
-	const index = input.index ?? list.length
+	let index = input.index
+	if (index === undefined && originPlaceId) {
+		const placeIndex = list.indexOf(originPlaceId)
+		if (placeIndex === -1) throw new Error('Origin place not in parent')
+		const attached = listAttachedIsochrones(next, originPlaceId)
+		if (attached.length > 0) {
+			const lastId = attached[attached.length - 1]?.id
+			const lastIndex = lastId ? list.indexOf(lastId) : -1
+			index = lastIndex >= 0 ? lastIndex + 1 : placeIndex + 1
+		} else {
+			index = placeIndex + 1
+		}
+	} else if (index === undefined) {
+		index = list.length
+	}
+
 	const id = createId('isochrone')
 	const node: IsochroneNode = {
 		id,
@@ -299,6 +366,7 @@ export function addIsochrone(
 		color: input.draft.color,
 		visible: input.draft.visible,
 	}
+	if (originPlaceId) node.originPlaceId = originPlaceId
 	next.nodes[id] = node
 	list.splice(index, 0, id)
 	return { doc: next, id }

@@ -130,6 +130,7 @@ export function PlaceDetail({ mapRef }: PlaceDetailProps) {
                                         lat: place.coordinates.lat,
                                         label: place.name,
                                     },
+                                    placeId,
                                     getParentId(document, placeId),
                                 );
                             }}

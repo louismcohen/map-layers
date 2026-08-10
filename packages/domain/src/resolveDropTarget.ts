@@ -6,11 +6,7 @@ export type DropTarget = {
 	index: number
 }
 
-function siblingTarget(
-	doc: Document,
-	activeId: NodeId,
-	overId: NodeId,
-): DropTarget {
+function siblingTarget(doc: Document, activeId: NodeId, overId: NodeId): DropTarget {
 	const overParent = getParentId(doc, overId)
 	const siblings =
 		overParent === null
@@ -32,6 +28,8 @@ function siblingTarget(
  * - Place (or other content) dropped on a layer → append as that layer's child
  * - Layer dropped on a layer → reorder as a sibling of that layer (same parent)
  * - Drop on a non-layer → insert at that row's index within its parent
+ * - Attached isochrones (`originPlaceId`) may only reorder among the origin place
+ *   and other isochrones bound to the same place
  *
  * Layer-into-layer nesting is intentional via "New sublayer", not drag — dropping
  * a layer onto another layer used to nest and was too easy to do by accident,
@@ -47,6 +45,18 @@ export function resolveDropTarget(
 	const overNode = doc.nodes[overId]
 	const activeNode = doc.nodes[activeId]
 	if (!overNode || !activeNode) return null
+
+	if (activeNode.kind === 'isochrone' && activeNode.originPlaceId) {
+		const originId = activeNode.originPlaceId
+		const originParent = getParentId(doc, originId)
+		const overIsOrigin = overId === originId
+		const overIsPeer =
+			overNode.kind === 'isochrone' && overNode.originPlaceId === originId
+		if (!overIsOrigin && !overIsPeer) return null
+		const target = siblingTarget(doc, activeId, overId)
+		if (target.parentId !== originParent) return null
+		return target
+	}
 
 	if (overNode.kind === 'layer' && activeNode.kind !== 'layer') {
 		return { parentId: overId, index: overNode.children.length }

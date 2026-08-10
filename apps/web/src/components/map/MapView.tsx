@@ -92,7 +92,7 @@ export function MapView({ mapRef, userLocation, onMoveEnd }: MapViewProps) {
                             id={`isochrone-fill-${isochrone.id}`}
                             type='fill'
                             paint={{
-                                'fill-color': hexToRgba(color, 0.15),
+                                'fill-color': hexToRgba(color, 0.1),
                                 'fill-opacity': 1,
                             }}
                         />
@@ -102,7 +102,7 @@ export function MapView({ mapRef, userLocation, onMoveEnd }: MapViewProps) {
                             paint={{
                                 'line-color': color,
                                 'line-width': 1.5,
-                                'line-opacity': 0.7,
+                                'line-opacity': 0.5,
                             }}
                         />
                     </Source>
@@ -111,6 +111,7 @@ export function MapView({ mapRef, userLocation, onMoveEnd }: MapViewProps) {
                     <PlaceMarker
                         key={place.id}
                         id={place.id}
+                        label={place.name}
                         latitude={place.coordinates.lat}
                         longitude={place.coordinates.lng}
                         color={color}
@@ -123,6 +124,7 @@ export function MapView({ mapRef, userLocation, onMoveEnd }: MapViewProps) {
                     <PlaceMarker
                         key={`search-${result.mapboxId}`}
                         id={result.mapboxId}
+                        label={result.name}
                         latitude={result.coordinates.lat}
                         longitude={result.coordinates.lng}
                         color={searchPreview.color}

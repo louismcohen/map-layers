@@ -8,7 +8,7 @@ const DENOISE = 0.1
 /** Mapbox Douglas–Peucker tolerance in meters. */
 const GENERALIZE_METERS = 200
 /** Turf Chaikin corner-cutting passes after fetch. */
-const SMOOTH_ITERATIONS = 3
+const SMOOTH_ITERATIONS = 1
 
 export class IsochroneRequestError extends Error {
 	readonly status?: number

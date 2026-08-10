@@ -17,10 +17,12 @@ import {
 } from './mutations'
 import { resolveDropTarget } from './resolveDropTarget'
 import {
+	flattenTree,
 	getEffectiveColor,
 	getEffectiveMaki,
 	getParentId,
 	isEffectivelyVisible,
+	listAttachedIsochrones,
 	listVisibleIsochrones,
 	listVisiblePlaces,
 } from './selectors'
@@ -387,5 +389,148 @@ describe('domain tree', () => {
 		expect(formatIsochroneName('walking', 'time', [15], '  Café  ')).toBe('15 min walk from Café')
 		expect(formatIsochroneName('driving', 'time', [10], '')).toBe('10 min drive')
 		expect(formatIsochroneName('driving', 'time', [10], null)).toBe('10 min drive')
+	})
+
+	it('attaches place-origin isochrones and nests them in flattenTree', () => {
+		let doc = createEmptyDocument()
+		const layer = createLayer(doc, { name: 'Spots', color: '#1f01b9' })
+		doc = layer.doc
+		const places = addPlaces(doc, {
+			targetParentId: layer.layerId,
+			places: [
+				{
+					name: 'Cafe',
+					mapboxId: 'poi.cafe',
+					coordinates: { lng: -122, lat: 37 },
+				},
+			],
+		})
+		doc = places.doc
+		const placeId = places.addedIds[0]
+		if (!placeId) throw new Error('missing place')
+
+		const attached = addIsochrone(doc, {
+			draft: {
+				name: '15 min walk',
+				center: { lng: -122, lat: 37 },
+				profile: 'walking',
+				metric: 'time',
+				contours: [15],
+				geojson: emptyGeojson,
+				color: '#da2007',
+				visible: true,
+				originPlaceId: placeId,
+			},
+		})
+		doc = attached.doc
+		expect(getParentId(doc, attached.id)).toBe(layer.layerId)
+		expect(doc.nodes[attached.id]).toMatchObject({ originPlaceId: placeId })
+		expect(listAttachedIsochrones(doc, placeId).map((n) => n.id)).toEqual([attached.id])
+
+		const rows = flattenTree(doc)
+		const placeRow = rows.find((r) => r.id === placeId)
+		const isoRow = rows.find((r) => r.id === attached.id)
+		expect(placeRow?.depth).toBe(1)
+		expect(isoRow?.depth).toBe(2)
+		expect(rows.indexOf(isoRow!)).toBeGreaterThan(rows.indexOf(placeRow!))
+
+		const collapsed = flattenTree(doc, { collapsedPlaceIds: new Set([placeId]) })
+		expect(collapsed.some((r) => r.id === attached.id)).toBe(false)
+	})
+
+	it('deletes attached isochrones with their place', () => {
+		let doc = createEmptyDocument()
+		const places = addPlaces(doc, {
+			places: [
+				{
+					name: 'Cafe',
+					mapboxId: 'poi.cafe',
+					coordinates: { lng: -122, lat: 37 },
+				},
+			],
+		})
+		doc = places.doc
+		const placeId = places.addedIds[0]
+		if (!placeId) throw new Error('missing place')
+
+		const iso = addIsochrone(doc, {
+			draft: {
+				name: '10 min walk',
+				center: { lng: -122, lat: 37 },
+				profile: 'walking',
+				metric: 'time',
+				contours: [10],
+				geojson: emptyGeojson,
+				color: '#da2007',
+				visible: true,
+				originPlaceId: placeId,
+			},
+		})
+		doc = iso.doc
+		doc = deleteNodes(doc, [placeId])
+		expect(doc.nodes[placeId]).toBeUndefined()
+		expect(doc.nodes[iso.id]).toBeUndefined()
+	})
+
+	it('moves place with attached isochrones and blocks reparent of attached isochrone', () => {
+		let doc = createEmptyDocument()
+		const a = createLayer(doc, { name: 'A', color: '#1f01b9' })
+		doc = a.doc
+		const b = createLayer(doc, { name: 'B', color: '#da2007' })
+		doc = b.doc
+		const places = addPlaces(doc, {
+			targetParentId: a.layerId,
+			places: [
+				{
+					name: 'Cafe',
+					mapboxId: 'poi.cafe',
+					coordinates: { lng: -122, lat: 37 },
+				},
+			],
+		})
+		doc = places.doc
+		const placeId = places.addedIds[0]
+		if (!placeId) throw new Error('missing place')
+
+		const iso = addIsochrone(doc, {
+			draft: {
+				name: '15 min walk',
+				center: { lng: -122, lat: 37 },
+				profile: 'walking',
+				metric: 'time',
+				contours: [15],
+				geojson: emptyGeojson,
+				color: '#ec9916',
+				visible: true,
+				originPlaceId: placeId,
+			},
+		})
+		doc = iso.doc
+
+		doc = moveNodes(doc, {
+			ids: [placeId],
+			targetParentId: b.layerId,
+			index: 0,
+		})
+		expect(getParentId(doc, placeId)).toBe(b.layerId)
+		expect(getParentId(doc, iso.id)).toBe(b.layerId)
+		expect(doc.nodes[b.layerId]).toMatchObject({
+			kind: 'layer',
+			children: [placeId, iso.id],
+		})
+
+		expect(() =>
+			moveNodes(doc, {
+				ids: [iso.id],
+				targetParentId: a.layerId,
+				index: 0,
+			}),
+		).toThrow(/away from its place/)
+
+		expect(resolveDropTarget(doc, iso.id, a.layerId)).toBeNull()
+		expect(resolveDropTarget(doc, iso.id, placeId)).toEqual({
+			parentId: b.layerId,
+			index: expect.any(Number),
+		})
 	})
 })

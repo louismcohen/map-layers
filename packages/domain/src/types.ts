@@ -43,6 +43,11 @@ export type IsochroneNode = {
 	color: string
 	/** Own toggle; effective visibility still ANDs ancestor layers when nested. */
 	visible: boolean
+	/**
+	 * When set, bound to this place: UI nests under it; move/delete follow the place;
+	 * cannot reparent away. Still a sibling of the place in the tree (same parent).
+	 */
+	originPlaceId?: NodeId
 }
 
 export type LayerNode = {

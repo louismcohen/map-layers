@@ -12,6 +12,7 @@ import {
 	collectPlaceIdsInSubtree,
 	flattenTree,
 	getParentId,
+	listAttachedIsochrones,
 	type NodeId,
 	resolveDropTarget,
 } from '@map-layers/domain'
@@ -56,8 +57,12 @@ export function LayersPanel({ mapRef }: LayersPanelProps) {
 	const [menuId, setMenuId] = useState<NodeId | null>(null)
 	const [stylePickerId, setStylePickerId] = useState<NodeId | null>(null)
 	const [editingId, setEditingId] = useState<NodeId | null>(null)
+	const [collapsedPlaceIds, setCollapsedPlaceIds] = useState<Set<NodeId>>(() => new Set())
 
-	const rows = useMemo(() => flattenTree(document), [document])
+	const rows = useMemo(
+		() => flattenTree(document, { collapsedPlaceIds }),
+		[document, collapsedPlaceIds],
+	)
 	const sortableIds = rows.map((r) => r.id)
 
 	const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }))
@@ -103,13 +108,19 @@ export function LayersPanel({ mapRef }: LayersPanelProps) {
 						<SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
 							<ul>
 								<AnimatePresence initial={false}>
-									{rows.map((row) => (
+									{rows.map((row) => {
+										const placeCollapsible =
+											row.node.kind === 'place' &&
+											listAttachedIsochrones(document, row.id).length > 0
+										return (
 										<SortableRow
 											key={row.id}
 											node={row.node}
 											id={row.id}
 											depth={row.depth}
-											isRoot={row.depth === 0}
+											isRoot={getParentId(document, row.id) === null}
+											placeCollapsible={placeCollapsible}
+											placeCollapsed={collapsedPlaceIds.has(row.id)}
 											selected={
 												selectedNodeIds.includes(row.id) ||
 												selectedPlaceId === row.id
@@ -128,8 +139,17 @@ export function LayersPanel({ mapRef }: LayersPanelProps) {
 													toggleIsochroneVisible(row.id)
 											}}
 											onToggleCollapsed={() => {
-												if (row.node.kind !== 'layer') return
-												setLayerCollapsed(row.id, !row.node.collapsed)
+												if (row.node.kind === 'layer') {
+													setLayerCollapsed(row.id, !row.node.collapsed)
+													return
+												}
+												if (row.node.kind !== 'place') return
+												setCollapsedPlaceIds((prev) => {
+													const next = new Set(prev)
+													if (next.has(row.id)) next.delete(row.id)
+													else next.add(row.id)
+													return next
+												})
 											}}
 											onStartEdit={() => {
 												setEditingId(row.id)
@@ -181,12 +201,14 @@ export function LayersPanel({ mapRef }: LayersPanelProps) {
 														lat: row.node.coordinates.lat,
 														label: row.node.name,
 													},
+													row.id,
 													getParentId(document, row.id),
 												)
 												setMenuId(null)
 											}}
 										/>
-									))}
+										)
+									})}
 								</AnimatePresence>
 							</ul>
 						</SortableContext>

@@ -32,6 +32,10 @@ export type SortableRowProps = {
     depth: number;
     /** True when this row is a root child (isochrones get color controls). */
     isRoot: boolean;
+    /** Place with attached isochrones — show collapse caret. */
+    placeCollapsible?: boolean;
+    /** UI-only collapse for places with attachments. */
+    placeCollapsed?: boolean;
     selected: boolean;
     editing: boolean;
     menuOpen: boolean;
@@ -58,6 +62,8 @@ export function SortableRow({
     id,
     depth,
     isRoot,
+    placeCollapsible = false,
+    placeCollapsed = false,
     selected,
     editing,
     menuOpen,
@@ -130,18 +136,25 @@ export function SortableRow({
                 )}
             >
                 <div className='flex items-center gap-1 px-1 py-1'>
-                    {isLayer ? (
+                    {isLayer || (isPlace && placeCollapsible) ? (
                         <button
                             type='button'
                             className='flex h-5 w-5 shrink-0 items-center justify-center text-muted-foreground hover:text-foreground'
                             onClick={onToggleCollapsed}
-                            aria-label={node.collapsed ? 'Expand' : 'Collapse'}
-                            aria-expanded={!node.collapsed}
+                            aria-label={
+                                (isLayer ? node.collapsed : placeCollapsed)
+                                    ? 'Expand'
+                                    : 'Collapse'
+                            }
+                            aria-expanded={
+                                !(isLayer ? node.collapsed : placeCollapsed)
+                            }
                         >
                             <CaretRightIcon
                                 className={cn(
                                     'h-3.5 w-3.5 transition-transform duration-200 ease-out',
-                                    !node.collapsed && 'rotate-90',
+                                    !(isLayer ? node.collapsed : placeCollapsed) &&
+                                        'rotate-90',
                                 )}
                                 aria-hidden
                             />

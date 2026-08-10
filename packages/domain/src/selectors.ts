@@ -158,6 +158,32 @@ export function collectDescendantIds(doc: Document, id: NodeId): NodeId[] {
 	return ids
 }
 
+/** Isochrones bound to a place, in sibling-list order (same parent as the place). */
+export function listAttachedIsochrones(doc: Document, placeId: NodeId): IsochroneNode[] {
+	const parentId = getParentId(doc, placeId)
+	const siblings =
+		parentId === null ? doc.rootChildren : (getLayer(doc, parentId)?.children ?? [])
+	const result: IsochroneNode[] = []
+	for (const id of siblings) {
+		const node = doc.nodes[id]
+		if (node?.kind === 'isochrone' && node.originPlaceId === placeId) {
+			result.push(node)
+		}
+	}
+	return result
+}
+
+/** All isochrones bound to a place (any tree location). */
+export function listAttachedIsochroneIds(doc: Document, placeId: NodeId): NodeId[] {
+	const ids: NodeId[] = []
+	for (const node of Object.values(doc.nodes)) {
+		if (node.kind === 'isochrone' && node.originPlaceId === placeId) {
+			ids.push(node.id)
+		}
+	}
+	return ids
+}
+
 export function collectPlaceIdsInSubtree(doc: Document, rootId: NodeId | null): PlaceNode[] {
 	const places: PlaceNode[] = []
 
@@ -199,16 +225,34 @@ export type TreeRow = {
 	node: DocNode
 }
 
-export function flattenTree(doc: Document): TreeRow[] {
+export type FlattenTreeOptions = {
+	/** Place ids whose attached isochrones are hidden in the panel (UI-only collapse). */
+	collapsedPlaceIds?: ReadonlySet<NodeId>
+}
+
+export function flattenTree(doc: Document, options?: FlattenTreeOptions): TreeRow[] {
 	const rows: TreeRow[] = []
+	const collapsedPlaces = options?.collapsedPlaceIds
+
+	const nestedUnderPlace = new Set<NodeId>()
+	for (const node of Object.values(doc.nodes)) {
+		if (node.kind !== 'isochrone' || !node.originPlaceId) continue
+		const origin = doc.nodes[node.originPlaceId]
+		if (origin?.kind === 'place') nestedUnderPlace.add(node.id)
+	}
 
 	const walk = (ids: NodeId[], depth: number) => {
 		for (const id of ids) {
+			if (nestedUnderPlace.has(id)) continue
 			const node = doc.nodes[id]
 			if (!node) continue
 			rows.push({ id, depth, node })
 			if (node.kind === 'layer' && !node.collapsed) {
 				walk(node.children, depth + 1)
+			} else if (node.kind === 'place' && !collapsedPlaces?.has(id)) {
+				for (const iso of listAttachedIsochrones(doc, id)) {
+					rows.push({ id: iso.id, depth: depth + 1, node: iso })
+				}
 			}
 		}
 	}

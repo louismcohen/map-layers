@@ -61,9 +61,9 @@ type TabOption<T extends string> = {
 };
 
 const PROFILES: TabOption<IsochroneProfile>[] = [
-    { value: 'walking', label: 'Walk', icon: PersonSimpleWalkIcon },
-    { value: 'cycling', label: 'Bike', icon: PersonSimpleBikeIcon },
     { value: 'driving', label: 'Drive', icon: CarProfileIcon },
+    { value: 'cycling', label: 'Bike', icon: PersonSimpleBikeIcon },
+    { value: 'walking', label: 'Walk', icon: PersonSimpleWalkIcon },
 ];
 
 const METRICS: TabOption<IsochroneMetric>[] = [
@@ -148,7 +148,7 @@ export function IsochroneDialog({
     onCancel,
     onConfirm,
 }: IsochroneDialogProps) {
-    const [profile, setProfile] = useState<IsochroneProfile>('walking');
+    const [profile, setProfile] = useState<IsochroneProfile>('driving');
     const [metric, setMetric] = useState<IsochroneMetric>('time');
     const [amount, setAmount] = useState(String(DEFAULT_MINUTES));
 
@@ -156,7 +156,7 @@ export function IsochroneDialog({
 
     useEffect(() => {
         if (open) {
-            setProfile('walking');
+            setProfile('driving');
             setMetric('time');
             setAmount(String(DEFAULT_MINUTES));
         }

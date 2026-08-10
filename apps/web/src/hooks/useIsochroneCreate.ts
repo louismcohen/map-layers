@@ -15,6 +15,8 @@ export type IsochroneCreateRequest = {
 	center: IsochroneDialogCenter
 	/** null = root (search flow); layer id or null for sibling of a place */
 	targetParentId: NodeId | null
+	/** When set, bind isochrone to this place (UI-nested, locked). */
+	originPlaceId?: NodeId
 }
 
 export function useIsochroneCreate() {
@@ -29,8 +31,8 @@ export function useIsochroneCreate() {
 	}, [])
 
 	const openForPlace = useCallback(
-		(center: IsochroneDialogCenter, placeParentId: NodeId | null) => {
-			setPending({ center, targetParentId: placeParentId })
+		(center: IsochroneDialogCenter, placeId: NodeId, placeParentId: NodeId | null) => {
+			setPending({ center, targetParentId: placeParentId, originPlaceId: placeId })
 		},
 		[],
 	)
@@ -58,7 +60,7 @@ export function useIsochroneCreate() {
 					result.profile,
 					result.metric,
 					result.contours,
-					pending.center.label,
+					pending.originPlaceId ? undefined : pending.center.label,
 				)
 				const draft: IsochroneDraft = {
 					name,
@@ -73,6 +75,7 @@ export function useIsochroneCreate() {
 					color: pickRandomLayerColor(),
 					visible: true,
 				}
+				if (pending.originPlaceId) draft.originPlaceId = pending.originPlaceId
 				addIsochrone(draft, pending.targetParentId)
 				setPending(null)
 			} catch (error) {
