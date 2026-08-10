@@ -5,6 +5,14 @@ import {
     type IsochroneProfile,
     milesToMeters,
 } from '@map-layers/domain';
+import {
+    CarProfileIcon,
+    ClockIcon,
+    type Icon,
+    PathIcon,
+    PersonSimpleBikeIcon,
+    PersonSimpleWalkIcon,
+} from '@phosphor-icons/react';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -16,13 +24,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export type IsochroneDialogCenter = {
     lng: number;
@@ -49,6 +51,96 @@ type IsochroneDialogProps = {
 const DEFAULT_MINUTES = 15;
 const DEFAULT_MILES = 1;
 
+const TAB_TRIGGER_CLASS =
+    'gap-1 px-2 py-2 text-sm hover:text-[color-mix(in_oklch,var(--primary)_75%,var(--foreground))] data-active:text-primary data-active:hover:text-primary';
+
+type TabOption<T extends string> = {
+    value: T;
+    label: string;
+    icon: Icon;
+};
+
+const PROFILES: TabOption<IsochroneProfile>[] = [
+    { value: 'walking', label: 'Walk', icon: PersonSimpleWalkIcon },
+    { value: 'cycling', label: 'Bike', icon: PersonSimpleBikeIcon },
+    { value: 'driving', label: 'Drive', icon: CarProfileIcon },
+];
+
+const METRICS: TabOption<IsochroneMetric>[] = [
+    { value: 'time', label: 'Time', icon: ClockIcon },
+    { value: 'distance', label: 'Distance', icon: PathIcon },
+];
+
+const AMOUNT_BY_METRIC = {
+    time: {
+        label: 'Travel Time',
+        defaultValue: DEFAULT_MINUTES,
+        min: 1,
+        max: ISOCHRONE_MAX_MINUTES,
+        step: 1,
+        hint: `Up to ${ISOCHRONE_MAX_MINUTES} minutes`,
+        integer: true,
+    },
+    distance: {
+        label: 'Travel Distance',
+        defaultValue: DEFAULT_MILES,
+        min: 0.1,
+        max: ISOCHRONE_MAX_MILES,
+        step: 0.1,
+        hint: `Up to ${ISOCHRONE_MAX_MILES} miles`,
+        integer: false,
+    },
+} as const;
+
+function OptionTabs<T extends string>({
+    label,
+    value,
+    options,
+    onValueChange,
+}: {
+    label: string;
+    value: T;
+    options: readonly TabOption<T>[];
+    onValueChange: (value: T) => void;
+}) {
+    return (
+        <div className='flex flex-col gap-1'>
+            <Label className='text-xs text-muted-foreground'>{label}</Label>
+            <Tabs
+                value={value}
+                onValueChange={(next) => {
+                    if (options.some((option) => option.value === next)) {
+                        onValueChange(next as T);
+                    }
+                }}
+            >
+                <TabsList className='w-full'>
+                    {options.map(
+                        ({
+                            value: optionValue,
+                            label: optionLabel,
+                            icon: Icon,
+                        }) => (
+                            <TabsTrigger
+                                key={optionValue}
+                                value={optionValue}
+                                className={TAB_TRIGGER_CLASS}
+                            >
+                                <Icon
+                                    className='size-4'
+                                    weight='duotone'
+                                    aria-hidden
+                                />
+                                {optionLabel}
+                            </TabsTrigger>
+                        ),
+                    )}
+                </TabsList>
+            </Tabs>
+        </div>
+    );
+}
+
 export function IsochroneDialog({
     open,
     center,
@@ -59,6 +151,8 @@ export function IsochroneDialog({
     const [profile, setProfile] = useState<IsochroneProfile>('walking');
     const [metric, setMetric] = useState<IsochroneMetric>('time');
     const [amount, setAmount] = useState(String(DEFAULT_MINUTES));
+
+    const amountConfig = AMOUNT_BY_METRIC[metric];
 
     useEffect(() => {
         if (open) {
@@ -72,14 +166,8 @@ export function IsochroneDialog({
     const amountValid =
         Number.isFinite(parsed) &&
         parsed > 0 &&
-        (metric === 'time'
-            ? Number.isInteger(parsed) && parsed <= ISOCHRONE_MAX_MINUTES
-            : parsed <= ISOCHRONE_MAX_MILES);
-
-    const amountHint =
-        metric === 'time'
-            ? `Up to ${ISOCHRONE_MAX_MINUTES} minutes`
-            : `Up to ${ISOCHRONE_MAX_MILES} miles`;
+        parsed <= amountConfig.max &&
+        (!amountConfig.integer || Number.isInteger(parsed));
 
     return (
         <Dialog
@@ -104,7 +192,7 @@ export function IsochroneDialog({
                     }}
                 >
                     <DialogHeader className='mb-3'>
-                        <DialogTitle>Add isochrone</DialogTitle>
+                        <DialogTitle>Add Isochrone</DialogTitle>
                         {center?.label ? (
                             <p className='truncate text-xs text-muted-foreground'>
                                 {center.label}
@@ -112,103 +200,46 @@ export function IsochroneDialog({
                         ) : null}
                     </DialogHeader>
 
-                    <div className='mb-3 space-y-2'>
-                        <Label
-                            className='text-xs text-muted-foreground'
-                            htmlFor='iso-profile'
-                        >
-                            Mode
-                        </Label>
-                        <Select
+                    <div className='flex flex-col gap-2'>
+                        <OptionTabs
+                            label='Mode'
                             value={profile}
-                            onValueChange={(value) => {
-                                if (
-                                    value === 'walking' ||
-                                    value === 'cycling' ||
-                                    value === 'driving'
-                                ) {
-                                    setProfile(value);
-                                }
-                            }}
-                        >
-                            <SelectTrigger
-                                id='iso-profile'
-                                className='w-full'
-                                size='sm'
-                            >
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value='walking'>Walking</SelectItem>
-                                <SelectItem value='cycling'>Cycling</SelectItem>
-                                <SelectItem value='driving'>Driving</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
-
-                    <div className='mb-3 space-y-2'>
-                        <Label
-                            className='text-xs text-muted-foreground'
-                            htmlFor='iso-metric'
-                        >
-                            Metric
-                        </Label>
-                        <Select
-                            value={metric}
-                            onValueChange={(value) => {
-                                if (value === 'time' || value === 'distance') {
-                                    setMetric(value);
-                                    setAmount(
-                                        value === 'time'
-                                            ? String(DEFAULT_MINUTES)
-                                            : String(DEFAULT_MILES),
-                                    );
-                                }
-                            }}
-                        >
-                            <SelectTrigger
-                                id='iso-metric'
-                                className='w-full'
-                                size='sm'
-                            >
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value='time'>
-                                    Travel time
-                                </SelectItem>
-                                <SelectItem value='distance'>
-                                    Distance
-                                </SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
-
-                    <div className='mb-4 space-y-2'>
-                        <Label
-                            className='text-xs text-muted-foreground'
-                            htmlFor='iso-amount'
-                        >
-                            {metric === 'time' ? 'Minutes' : 'Miles'}
-                        </Label>
-                        <Input
-                            id='iso-amount'
-                            type='number'
-                            inputMode='decimal'
-                            min={metric === 'time' ? 1 : 0.1}
-                            max={
-                                metric === 'time'
-                                    ? ISOCHRONE_MAX_MINUTES
-                                    : ISOCHRONE_MAX_MILES
-                            }
-                            step={metric === 'time' ? 1 : 0.1}
-                            value={amount}
-                            onChange={(e) => setAmount(e.target.value)}
-                            className='h-8'
+                            options={PROFILES}
+                            onValueChange={setProfile}
                         />
-                        <p className='text-[11px] text-muted-foreground'>
-                            {amountHint}
-                        </p>
+                        <OptionTabs
+                            label='Metric'
+                            value={metric}
+                            options={METRICS}
+                            onValueChange={(next) => {
+                                setMetric(next);
+                                setAmount(
+                                    String(AMOUNT_BY_METRIC[next].defaultValue),
+                                );
+                            }}
+                        />
+
+                        <div className='flex flex-col gap-1'>
+                            <Label
+                                className='text-xs text-muted-foreground'
+                                htmlFor='iso-amount'
+                            >
+                                {amountConfig.label}
+                            </Label>
+                            <Input
+                                id='iso-amount'
+                                type='number'
+                                inputMode='decimal'
+                                min={amountConfig.min}
+                                max={amountConfig.max}
+                                step={amountConfig.step}
+                                value={amount}
+                                onChange={(e) => setAmount(e.target.value)}
+                            />
+                            <p className='text-[11px] text-muted-foreground'>
+                                {amountConfig.hint}
+                            </p>
+                        </div>
                     </div>
 
                     <DialogFooter>

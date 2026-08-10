@@ -213,7 +213,7 @@ Port patterns from `~/Developer/yelp-combinator-frontend` (not a hard dependency
 - Pins like `IconMarker` with `variant?: 'outline' | 'filled'` (**default `filled`**): 32px circle, shadow, selected spring scale — **`color` prop from effective layer color**. Filled = layer color fill (`${color}F2`), light border, soft top highlight, white glyph (yelp-combinator visited look). Outline = light gray gradient fill, colored border + glyph.
 - Inner glyph = `@mapbox/maki` SVG from effective maki (`getEffectiveMaki`: nearest ancestor layer `maki`, else place `maki`, default `marker`); tinted via `currentColor`
 - Optional: Supercluster + `ClusterMarker` if pin density gets high; start without clustering, add if needed
-- Click pin → select place in tree + lightweight detail popover (name, address, same place actions as the row `…` menu: Add Isochrone, Rename, Fit to Map, Delete)
+- Click pin → select place in tree + lightweight detail popover (name as rename button — pencil slides in from left / out to right on title hover; address; icon actions: isochrone / fit / delete — same as place row `…` menu)
 
 Only **effectively visible** places and isochrones render.
 
@@ -323,7 +323,7 @@ Independent leaf content kind in the same nested tree. Immutable after create (d
 
 - **Search:** trailing map icon on each result → dialog → insert at **root** (isochrone only; does not add the place pin).
 - **Existing place:** `…` → “Add isochrone…” → dialog → insert as **sibling** under the same parent as that place.
-- Dialog: **profile** (walking / cycling / driving) + **metric** (time / distance) + **amount** input (minutes or miles). Single contour; miles converted to meters for the API. Limits: 1–60 min, up to ~62.1 mi. Auto-name e.g. `20 min drive from 2219 Main Street` / `1 mi bike from Café` (falls back to `15 min walk` if no place label).
+- Dialog: **profile** (walking / cycling / driving) + **metric** (time / distance) as horizontal **shadcn Tabs** with Phosphor icons + **amount** input (minutes or miles). Single contour; miles converted to meters for the API. Limits: 1–60 min, up to 60 mi (floored to nearest 5 under Mapbox’s ~62.1 mi / 100 km cap). Auto-name e.g. `20 min drive from 2219 Main Street` / `1 mi bike from Café` (falls back to `15 min walk` if no place label).
 
 ### Provider
 

@@ -102,5 +102,5 @@ export function metersToMiles(meters: number): number {
 	return meters / METERS_PER_MILE
 }
 
-/** Max distance the UI may request, in miles (floored to Mapbox meters cap). */
-export const ISOCHRONE_MAX_MILES = Math.floor((ISOCHRONE_MAX_METERS / METERS_PER_MILE) * 10) / 10
+/** Max distance the UI may request, in miles (floored to nearest 5 under Mapbox meters cap). */
+export const ISOCHRONE_MAX_MILES = Math.floor(ISOCHRONE_MAX_METERS / METERS_PER_MILE / 5) * 5

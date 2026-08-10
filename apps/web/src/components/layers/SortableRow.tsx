@@ -203,8 +203,8 @@ export function SortableRow({
                             className={cn(
                                 'flex size-5 shrink-0 items-center justify-center rounded opacity-0 transition-opacity duration-100 ease-out group-hover/row:opacity-100 focus-visible:opacity-100',
                                 visible
-                                    ? 'text-foreground hover:text-foreground'
-                                    : 'text-muted-foreground hover:text-foreground',
+                                    ? 'text-foreground'
+                                    : 'text-muted-foreground',
                             )}
                             aria-label={visible ? 'Hide' : 'Show'}
                             aria-pressed={visible}
