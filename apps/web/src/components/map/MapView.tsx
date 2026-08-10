@@ -6,6 +6,7 @@ import { PlaceMarker } from '@/components/map/PlaceMarker';
 import { UserLocationMarker } from '@/components/map/UserLocationMarker';
 import { useFlyToUserOnce } from '@/hooks/useFlyToUserOnce';
 import type { LocationState } from '@/hooks/useLocation';
+import { useMapSidebarPadding } from '@/hooks/useMapSidebarPadding';
 import {
     DEFAULT_CENTER,
     DEFAULT_ZOOM,
@@ -47,6 +48,7 @@ export function MapView({ mapRef, userLocation, onMoveEnd }: MapViewProps) {
         (s) => s.toggleSearchSelection,
     );
     const { markUserInteracted } = useFlyToUserOnce(mapRef, userLocation);
+    const { mapPadding, onMapReady } = useMapSidebarPadding(mapRef);
 
     const visiblePlaces = useMemo(
         () => listVisiblePlaces(document),
@@ -67,9 +69,11 @@ export function MapView({ mapRef, userLocation, onMoveEnd }: MapViewProps) {
                     latitude: DEFAULT_CENTER.lat,
                     longitude: DEFAULT_CENTER.lng,
                     zoom: DEFAULT_ZOOM,
+                    padding: mapPadding,
                 }}
                 reuseMaps
                 attributionControl={false}
+                onLoad={onMapReady}
                 onClick={() => selectPlace(null)}
                 onMoveStart={(e) => {
                     if (e.originalEvent) markUserInteracted();

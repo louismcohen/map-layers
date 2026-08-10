@@ -7,6 +7,10 @@ export const MAP_STYLE = 'mapbox://styles/louiscohen/cm54miu4700j201qparty6veb'
 export const DEFAULT_CENTER = { lat: 34.04180854391167, lng: -118.26330796874899 }
 export const DEFAULT_ZOOM = 13
 
+/** Desktop floating sidebar container width (`--sidebar-width`); includes inner `p-2`. */
+export const SIDEBAR_WIDTH_PX = 400
+export const SIDEBAR_WIDTH_CSS = `${SIDEBAR_WIDTH_PX}px`
+
 export function getMapboxToken(): string {
 	const token = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN
 	if (!token) {

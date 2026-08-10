@@ -12,10 +12,8 @@ import {
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { useLocation } from '@/hooks/useLocation';
+import { SIDEBAR_WIDTH_CSS } from '@/lib/constants';
 import { useDocumentStore } from '@/store/documentStore';
-
-/** Matches prior ~300px pane; floating variant adds p-2 around the panel. */
-const SIDEBAR_WIDTH = '400px';
 
 export function App() {
     const mapRef = useRef<MapRef>(null);
@@ -36,29 +34,32 @@ export function App() {
     return (
         <TooltipProvider>
             <div className='relative h-svh w-screen overflow-hidden bg-background text-foreground'>
-                {/* Full-bleed map under the floating sidebar (visible in the p-2 gutter). */}
-                <div className='absolute inset-0 z-0'>
-                    {hydrated ? (
-                        <MapView mapRef={mapRef} userLocation={userLocation} />
-                    ) : (
-                        <div className='flex h-full items-center justify-center text-sm text-muted-foreground'>
-                            Loading map…
-                        </div>
-                    )}
-                </div>
-
+                {/* Map under chrome; must sit inside SidebarProvider for padding sync. */}
                 <SidebarProvider
                     className='pointer-events-none relative z-10 h-svh min-h-0 bg-transparent'
                     style={
                         {
-                            '--sidebar-width': SIDEBAR_WIDTH,
+                            '--sidebar-width': SIDEBAR_WIDTH_CSS,
                         } as React.CSSProperties
                     }
                 >
+                    <div className='pointer-events-auto absolute inset-0 z-0'>
+                        {hydrated ? (
+                            <MapView
+                                mapRef={mapRef}
+                                userLocation={userLocation}
+                            />
+                        ) : (
+                            <div className='flex h-full items-center justify-center text-sm text-muted-foreground'>
+                                Loading map…
+                            </div>
+                        )}
+                    </div>
+
                     <AppSidebar mapRef={mapRef} />
 
                     {/* Offset by sidebar width; transparent so the map shows through. */}
-                    <SidebarInset className='min-h-0 bg-transparent pointer-events-none'>
+                    <SidebarInset className='pointer-events-none min-h-0 bg-transparent'>
                         <div className='pointer-events-auto absolute top-3 left-3 z-20 md:hidden'>
                             <SidebarTrigger className='border border-border bg-background/90 shadow-sm backdrop-blur' />
                         </div>

@@ -3,7 +3,7 @@
 ## Status
 
 - Last updated: 2026-08-09
-- Implemented: living docs; monorepo; domain (+ `resolveDropTarget`); Zustand/IndexedDB; Mapbox (LA default + geolocation); layers panel (**combined color + optional Maki icon** via `LayerStylePicker` + **react-color** `GithubPicker`; **whole-row** drag reorder; Phosphor icons for caret expand / eye visibility); **filled** pins with Maki glyphs (place `maki`, overridable by nearest ancestor layer `maki`); Search Box with on-map preview pins (random color reused for new layers; **clear** control on search input); **isochrones** (time + distance; walk/bike/drive; user-chosen minutes/miles; create from search-row icon or place `…` menu; GeoJSON `Source`/`Layer`; provider-isolated Mapbox client with **denoise + generalize + Turf polygonSmooth**); fit bounds (places/layers only); modals/toasts; UI orchestration hooks (`usePlaceSearch`, `useIsochroneCreate`, `useFlyToUserOnce`) + shared `mapCamera` helpers; **shadcn/ui (base-rhea / taupe, always light)** chrome — **floating `Sidebar`** (`AppSidebar`: search + layers) over full-bleed map, inset offset by `--sidebar-width`
+- Implemented: living docs; monorepo; domain (+ `resolveDropTarget`); Zustand/IndexedDB; Mapbox (LA default + geolocation); layers panel (**combined color + optional Maki icon** via `LayerStylePicker` + **react-color** `GithubPicker`; **whole-row** drag reorder; Phosphor icons for caret expand / eye visibility); **filled** pins with Maki glyphs (place `maki`, overridable by nearest ancestor layer `maki`); Search Box with on-map preview pins (random color reused for new layers; **clear** control on search input); **isochrones** (time + distance; walk/bike/drive; user-chosen minutes/miles; create from search-row icon or place `…` menu; GeoJSON `Source`/`Layer`; provider-isolated Mapbox client with **denoise + generalize + Turf polygonSmooth**); fit bounds (places/layers only); modals/toasts; UI orchestration hooks (`usePlaceSearch`, `useIsochroneCreate`, `useFlyToUserOnce`, `useMapSidebarPadding`) + shared `mapCamera` helpers; **shadcn/ui (base-rhea / taupe, always light)** chrome — **floating `Sidebar`** (`AppSidebar`: search + layers) over full-bleed map; Mapbox **left padding** = `--sidebar-width` (400px) so the visual center is the clear map strip, cleared when the sidebar collapses / on mobile
 - In progress: none
 - Next: optional polish (layer opacity, clustering)
 - Deferred: see [Explicitly deferred](#explicitly-deferred)
@@ -80,7 +80,7 @@ map-layers/
 | `packages/domain` | Pure document/tree rules (mutations, selectors, `resolveDropTarget`) |
 | `lib/` | I/O adapters (`mapboxSearch`, `isochrone/` provider) and Mapbox camera helpers (`mapCamera`) |
 | `store/` | Zustand: document + selection + `searchPreview`; wraps domain; toasts via sonner |
-| `hooks/` | React lifecycle + store coordination (`usePlaceSearch`, `useLocation`, camera policies) |
+| `hooks/` | React lifecycle + store coordination (`usePlaceSearch`, `useLocation`, camera policies, `useMapSidebarPadding`) |
 | `components/` | Presentational UI: props/events in, render out (`components/ui` = shadcn primitives) |
 
 No backend package in v1.
@@ -251,9 +251,10 @@ Layer groups stay DOM-tree UI only; they never become Mapbox style layers. Conto
 └────────────────────────────────────────────────────┘
 ```
 
-- **Floating shadcn `Sidebar`** (`variant="floating"`) via `AppSidebar` + `SidebarProvider` / `SidebarInset`; width `--sidebar-width` (~300px / `18.75rem`), with the floating `p-2` gutter so the map shows around the rounded panel.
+- **Floating shadcn `Sidebar`** (`variant="floating"`) via `AppSidebar` + `SidebarProvider` / `SidebarInset`; width `--sidebar-width` / `SIDEBAR_WIDTH_PX` (**400px**), with the floating `p-2` gutter so the map shows around the rounded panel.
 - **`AppSidebar` split:** `SearchPanel` always top; separator + `LayersPanel` pinned to the bottom (`mt-auto`). Each sizes to content and may exceed half the sidebar when the other is smaller; when both need space they shrink together (≈50% ceiling). Overflow scrolls inside each panel.
 - Map is **full-bleed** under the chrome; inset overlays (locate, place detail, toasts) sit in `SidebarInset` (transparent, pointer-events gated) so controls stay clear of the panel.
+- **Map camera center offset:** `useMapSidebarPadding` sets Mapbox `padding.left` to the sidebar container width while the desktop sidebar is open. The geographic “center” (flyTo, fitBounds, `getCenter`, search proximity) is the midpoint of the clear strip from the sidebar container’s right edge to the viewport’s right edge. Padding animates with the sidebar collapse (`easeTo` ~200ms); **0** on mobile (sheet overlay) and when offcanvas-collapsed.
 - Desktop: collapsible offcanvas (`⌘/Ctrl+B`, rail); mobile: sheet + `SidebarTrigger`.
 - Body `overflow: hidden`, `h-svh`. Light sidebar tokens (`bg-sidebar`, etc.) — not dark glass, not purple/cream AI defaults.
 - Theme is **always light** (`:root` tokens only; no `dark` class / theme toggle in v1).

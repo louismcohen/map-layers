@@ -103,30 +103,31 @@ export function SortableRow({
     const visible = isLayer || isIsochrone ? node.visible : true;
 
     return (
-        // Height wrapper for expand/collapse; sortable node is the inner div
-        // so dnd-kit transforms don't fight Motion's height animation.
+        // Sortable transform must live on this overflow-hidden wrapper: translating
+        // an inner child gets clipped when siblings shift during reorder.
         <motion.li
+            ref={setNodeRef}
             initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
+            animate={{ height: 'auto', opacity: isDragging ? 0.6 : 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={rowHeightTransition}
+            style={{
+                transform: CSS.Transform.toString(transform),
+                transition,
+            }}
             className='overflow-hidden'
+            {...attributes}
+            {...listeners}
         >
             <div
-                ref={setNodeRef}
                 style={{
-                    transform: CSS.Transform.toString(transform),
-                    transition,
                     paddingLeft: depth * 32,
                 }}
                 className={cn(
                     'group/row relative mb-0.5 rounded-lg',
                     !editing && 'cursor-grab active:cursor-grabbing',
                     selected && 'bg-accent/80',
-                    isDragging && 'opacity-60',
                 )}
-                {...attributes}
-                {...listeners}
             >
                 <div className='flex items-center gap-1 px-1 py-1'>
                     {isLayer ? (
