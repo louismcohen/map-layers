@@ -3,7 +3,7 @@
 ## Status
 
 - Last updated: 2026-08-09
-- Implemented: living docs; monorepo; domain (+ `resolveDropTarget`); Zustand/IndexedDB; Mapbox (LA default + geolocation); layers panel (**combined color + optional Maki icon** via `LayerStylePicker` + **react-color** `GithubPicker`; **whole-row** drag reorder; Heroicons for chevron expand / eye visibility); **filled** pins with Maki glyphs (place `maki`, overridable by nearest ancestor layer `maki`); Search Box with on-map preview pins (random color reused for new layers; **clear** control on search input); **isochrones** (time + distance; walk/bike/drive; user-chosen minutes/miles; create from search-row icon or place `…` menu; GeoJSON `Source`/`Layer`; provider-isolated Mapbox client); fit bounds (places/layers only); modals/toasts; UI orchestration hooks (`usePlaceSearch`, `useIsochroneCreate`, `useFlyToUserOnce`) + shared `mapCamera` helpers; **shadcn/ui (base-rhea / taupe, always light)** chrome — **floating `Sidebar`** (`AppSidebar`: search + layers) over full-bleed map, inset offset by `--sidebar-width`
+- Implemented: living docs; monorepo; domain (+ `resolveDropTarget`); Zustand/IndexedDB; Mapbox (LA default + geolocation); layers panel (**combined color + optional Maki icon** via `LayerStylePicker` + **react-color** `GithubPicker`; **whole-row** drag reorder; Phosphor icons for caret expand / eye visibility); **filled** pins with Maki glyphs (place `maki`, overridable by nearest ancestor layer `maki`); Search Box with on-map preview pins (random color reused for new layers; **clear** control on search input); **isochrones** (time + distance; walk/bike/drive; user-chosen minutes/miles; create from search-row icon or place `…` menu; GeoJSON `Source`/`Layer`; provider-isolated Mapbox client with **denoise + generalize + Turf polygonSmooth**); fit bounds (places/layers only); modals/toasts; UI orchestration hooks (`usePlaceSearch`, `useIsochroneCreate`, `useFlyToUserOnce`) + shared `mapCamera` helpers; **shadcn/ui (base-rhea / taupe, always light)** chrome — **floating `Sidebar`** (`AppSidebar`: search + layers) over full-bleed map, inset offset by `--sidebar-width`
 - In progress: none
 - Next: optional polish (layer opacity, clustering)
 - Deferred: see [Explicitly deferred](#explicitly-deferred)
@@ -36,6 +36,7 @@ A solo, local-first web app: full-bleed Mapbox map with a left **floating** shad
 | Toasts | **sonner** (via shadcn `Toaster`; `pushToast` in the store) |
 | Pin glyphs | `@mapbox/maki` (from Search Box `maki`) |
 | Color picker | **react-color** (`GithubPicker`) in `LayerStylePicker` |
+| App icons | **`@phosphor-icons/react`** (layers/search chrome); shadcn primitives use Hugeicons |
 | Search | **Mapbox Search Box API** (see note below) |
 
 ### Search API note (important)
@@ -212,7 +213,7 @@ Port patterns from `~/Developer/yelp-combinator-frontend` (not a hard dependency
 - Pins like `IconMarker` with `variant?: 'outline' | 'filled'` (**default `filled`**): 32px circle, shadow, selected spring scale — **`color` prop from effective layer color**. Filled = layer color fill (`${color}F2`), light border, soft top highlight, white glyph (yelp-combinator visited look). Outline = light gray gradient fill, colored border + glyph.
 - Inner glyph = `@mapbox/maki` SVG from effective maki (`getEffectiveMaki`: nearest ancestor layer `maki`, else place `maki`, default `marker`); tinted via `currentColor`
 - Optional: Supercluster + `ClusterMarker` if pin density gets high; start without clustering, add if needed
-- Click pin → select place in tree + lightweight detail popover (name, address, “reveal in layers”)
+- Click pin → select place in tree + lightweight detail popover (name, address, same place actions as the row `…` menu: Add Isochrone, Rename, Fit to Map, Delete)
 
 Only **effectively visible** places and isochrones render.
 
@@ -263,11 +264,11 @@ Layer groups stay DOM-tree UI only; they never become Mapbox style layers. Conto
 Each row:
 
 - Whole-row drag (no grab handle; disabled while renaming; `PointerSensor` distance threshold keeps clicks on controls working)
-- Expand/collapse (`ChevronRightIcon`, CSS `rotate-90` when open; layers only); child rows animate height via Motion `AnimatePresence` (`height: 0` ↔ `auto`, ~200ms)
+- Expand/collapse (`CaretRightIcon`, CSS `rotate-90` when open; layers only); child rows animate height via Motion `AnimatePresence` (`height: 0` ↔ `auto`, ~200ms)
 - Visibility toggle (`EyeIcon` / `EyeSlashIcon`; layers only)
 - Style control (layers only): colored Maki glyph → one popover with **react-color** `GithubPicker` + filterable icon grid; **Auto** clears icon override so place icons show (`LayerStylePicker`)
 - Name (inline rename on double-click / Enter)
-- Context menu (`EllipsisVerticalIcon`): New sublayer, Ungroup, Delete, Fit map to contents
+- Context menu (`DotsThreeVerticalIcon`): layers — New sublayer, Ungroup, Rename, Fit to Map, Delete; places — Add Isochrone…, Rename, Fit to Map, Delete (same actions on the map place-detail popover)
 
 Behaviors:
 
@@ -279,7 +280,7 @@ Behaviors:
 | Hide layer | Eye off; descendants disappear from map; nested eyes remain but ineffective until parent shown |
 | Color / icon | Combined style picker; color updates pins immediately; optional Maki overrides descendant glyphs |
 
-Places appear as leaf rows under their layer (indent): name + menu only (no chevron/eye/style picker). Selecting a place highlights it and opens detail — **camera stays put** (use Fit to map from the row menu to frame).
+Places appear as leaf rows under their layer (indent): name + menu only (no chevron/eye/style picker). Selecting a place highlights it and opens detail — **camera stays put** (use Fit to Map from the row `…` menu or the detail popover to frame). Place detail actions mirror the place row menu.
 
 ### Search → add flow
 
@@ -322,11 +323,19 @@ Independent leaf content kind in the same nested tree. Immutable after create (d
 
 - **Search:** trailing map icon on each result → dialog → insert at **root** (isochrone only; does not add the place pin).
 - **Existing place:** `…` → “Add isochrone…” → dialog → insert as **sibling** under the same parent as that place.
-- Dialog: **profile** (walking / cycling / driving) + **metric** (time / distance) + **amount** input (minutes or miles). Single contour; miles converted to meters for the API. Limits: 1–60 min, up to ~62.1 mi. Auto-name e.g. `15 min walk` / `1 mi bike`.
+- Dialog: **profile** (walking / cycling / driving) + **metric** (time / distance) + **amount** input (minutes or miles). Single contour; miles converted to meters for the API. Limits: 1–60 min, up to ~62.1 mi. Auto-name e.g. `20 min drive from 2219 Main Street` / `1 mi bike from Café` (falls back to `15 min walk` if no place label).
 
 ### Provider
 
-`IsochroneProvider` interface in `apps/web/src/lib/isochrone/`; current impl `mapboxIsochroneProvider` calls [Mapbox Isochrone API](https://docs.mapbox.com/api/navigation/isochrone/) with `polygons=true` and `generalize=200`. Swap/replace without domain changes.
+`IsochroneProvider` interface in `apps/web/src/lib/isochrone/`; current impl `mapboxIsochroneProvider` calls [Mapbox Isochrone API](https://docs.mapbox.com/api/navigation/isochrone/) with `polygons=true`, then softens the contour:
+
+| Step | Method | Params |
+| --- | --- | --- |
+| API | `denoise` | `0.1` — drop small noisy islands |
+| API | `generalize` | `200` m — Douglas–Peucker simplify |
+| Client | `@turf/polygon-smooth` | `iterations: 3` — Chaikin corner-cutting |
+
+Swap/replace without domain changes.
 
 ### Persistence / ToS
 

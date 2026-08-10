@@ -54,7 +54,12 @@ export function useIsochroneCreate() {
 					metric: result.metric,
 					contours: result.contours,
 				})
-				const name = formatIsochroneName(result.profile, result.metric, result.contours)
+				const name = formatIsochroneName(
+					result.profile,
+					result.metric,
+					result.contours,
+					pending.center.label,
+				)
 				const draft: IsochroneDraft = {
 					name,
 					center: {

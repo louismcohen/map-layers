@@ -326,19 +326,29 @@ const PROFILE_LABEL: Record<IsochroneProfile, string> = {
 	driving: 'drive',
 }
 
-/** Auto-name from contour + profile, e.g. `15 min walk` / `1 mi bike`. Distance contours are meters. */
+/**
+ * Auto-name from contour + profile (+ optional place), e.g. `15 min walk from Main St` /
+ * `1 mi bike`. Distance contours are meters.
+ */
 export function formatIsochroneName(
 	profile: IsochroneProfile,
 	metric: IsochroneMetric,
 	contours: number[],
+	placeName?: string | null,
 ): string {
 	const largest = contours.length > 0 ? Math.max(...contours) : 0
 	const mode = PROFILE_LABEL[profile]
-	if (metric === 'time') return `${largest} min ${mode}`
-	const miles = metersToMiles(largest)
-	const label =
-		Number.isInteger(miles) || Math.abs(miles - Math.round(miles)) < 0.05
-			? String(Math.round(miles))
-			: miles.toFixed(1)
-	return `${label} mi ${mode}`
+	let base: string
+	if (metric === 'time') {
+		base = `${largest} min ${mode}`
+	} else {
+		const miles = metersToMiles(largest)
+		const label =
+			Number.isInteger(miles) || Math.abs(miles - Math.round(miles)) < 0.05
+				? String(Math.round(miles))
+				: miles.toFixed(1)
+		base = `${label} mi ${mode}`
+	}
+	const from = placeName?.trim()
+	return from ? `${base} from ${from}` : base
 }

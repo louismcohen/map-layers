@@ -68,7 +68,7 @@ export function App() {
                             className='pointer-events-auto absolute right-4 bottom-4 z-20'
                         />
                         <div className='pointer-events-auto'>
-                            <PlaceDetail />
+                            <PlaceDetail mapRef={mapRef} />
                         </div>
                         <Toaster position='bottom-right' />
                     </SidebarInset>

@@ -7,7 +7,7 @@ import {
 	useSensors,
 } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
-import { PlusIcon } from '@heroicons/react/24/outline'
+import { PlusIcon } from '@phosphor-icons/react'
 import {
 	collectPlaceIdsInSubtree,
 	flattenTree,

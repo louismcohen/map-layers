@@ -1,13 +1,13 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import type { DocNode, NodeId } from '@map-layers/domain';
 import {
-    ChevronRightIcon,
-    EllipsisVerticalIcon,
+    CaretRightIcon,
+    DotsThreeVerticalIcon,
     EyeIcon,
     EyeSlashIcon,
-    MapIcon,
-} from '@heroicons/react/24/outline';
-import type { DocNode, NodeId } from '@map-layers/domain';
+    PolygonIcon,
+} from '@phosphor-icons/react';
 import { motion } from 'motion/react';
 import { useEffect, useState } from 'react';
 import { LayerStylePicker } from '@/components/layers/LayerStylePicker';
@@ -137,7 +137,7 @@ export function SortableRow({
                             aria-label={node.collapsed ? 'Expand' : 'Collapse'}
                             aria-expanded={!node.collapsed}
                         >
-                            <ChevronRightIcon
+                            <CaretRightIcon
                                 className={cn(
                                     'h-3.5 w-3.5 transition-transform duration-200 ease-out',
                                     !node.collapsed && 'rotate-90',
@@ -150,7 +150,10 @@ export function SortableRow({
                             className='flex h-5 w-5 shrink-0 items-center justify-center text-muted-foreground'
                             aria-hidden
                         >
-                            <MapIcon className='h-3.5 w-3.5' />
+                            <PolygonIcon
+                                weight='fill'
+                                className='h-3.5 w-3.5'
+                            />
                         </span>
                     ) : (
                         <span className='h-5 w-5 shrink-0' aria-hidden />
@@ -214,7 +217,10 @@ export function SortableRow({
                             )}
                         </button>
                     ) : null}
-                    <DropdownMenu open={menuOpen} onOpenChange={onMenuOpenChange}>
+                    <DropdownMenu
+                        open={menuOpen}
+                        onOpenChange={onMenuOpenChange}
+                    >
                         <DropdownMenuTrigger
                             render={
                                 <Button
@@ -224,7 +230,7 @@ export function SortableRow({
                                     className=''
                                     aria-label='More'
                                 >
-                                    <EllipsisVerticalIcon
+                                    <DotsThreeVerticalIcon
                                         className='size-4'
                                         aria-hidden
                                     />
@@ -234,7 +240,9 @@ export function SortableRow({
                         <DropdownMenuContent align='end' className='min-w-35'>
                             {isLayer ? (
                                 <>
-                                    <DropdownMenuItem onClick={onCreateSublayer}>
+                                    <DropdownMenuItem
+                                        onClick={onCreateSublayer}
+                                    >
                                         New sublayer
                                     </DropdownMenuItem>
                                     <DropdownMenuItem onClick={onUngroup}>

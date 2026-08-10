@@ -1,6 +1,14 @@
 import type { IsochroneGeoJSON } from '@map-layers/domain'
+import polygonSmooth from '@turf/polygon-smooth'
 import { getMapboxToken } from '@/lib/constants'
 import type { IsochroneProvider, IsochroneRequest } from './types'
+
+/** Mapbox denoise: drop small noisy contour islands (0–1). */
+const DENOISE = 0.1
+/** Mapbox Douglas–Peucker tolerance in meters. */
+const GENERALIZE_METERS = 200
+/** Turf Chaikin corner-cutting passes after fetch. */
+const SMOOTH_ITERATIONS = 3
 
 export class IsochroneRequestError extends Error {
 	readonly status?: number
@@ -10,6 +18,14 @@ export class IsochroneRequestError extends Error {
 		this.name = 'IsochroneRequestError'
 		this.status = status
 	}
+}
+
+function smoothContours(geojson: IsochroneGeoJSON): IsochroneGeoJSON {
+	// Domain GeoJSON is intentionally loose; Mapbox returns Polygon features.
+	const smoothed = polygonSmooth(geojson as Parameters<typeof polygonSmooth>[0], {
+		iterations: SMOOTH_ITERATIONS,
+	})
+	return smoothed as IsochroneGeoJSON
 }
 
 /** Mapbox Isochrone API — https://docs.mapbox.com/api/navigation/isochrone/ */
@@ -30,15 +46,14 @@ export const mapboxIsochroneProvider: IsochroneProvider = {
 		const url = new URL(`https://api.mapbox.com/isochrone/v1/mapbox/${req.profile}/${lng},${lat}`)
 		url.searchParams.set('access_token', token)
 		url.searchParams.set('polygons', 'true')
-		url.searchParams.set('generalize', '200')
+		url.searchParams.set('denoise', String(DENOISE))
+		url.searchParams.set('generalize', String(GENERALIZE_METERS))
 		if (req.metric === 'time') {
 			url.searchParams.set('contours_minutes', req.contours.join(','))
 			url.searchParams.set('depart_at', departAt)
 		} else {
 			url.searchParams.set('contours_meters', req.contours.join(','))
 		}
-
-		console.log(url.toString())
 
 		const response = await fetch(url)
 		if (!response.ok) {
@@ -56,6 +71,6 @@ export const mapboxIsochroneProvider: IsochroneProvider = {
 		if (data.type !== 'FeatureCollection') {
 			throw new IsochroneRequestError('Unexpected isochrone response')
 		}
-		return data
+		return smoothContours(data)
 	},
 }

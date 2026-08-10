@@ -381,5 +381,11 @@ describe('domain tree', () => {
 		expect(formatIsochroneName('walking', 'time', [15])).toBe('15 min walk')
 		expect(formatIsochroneName('cycling', 'distance', [milesToMeters(5)])).toBe('5 mi bike')
 		expect(formatIsochroneName('driving', 'distance', [milesToMeters(0.5)])).toBe('0.5 mi drive')
+		expect(formatIsochroneName('driving', 'time', [20], '2219 Main Street')).toBe(
+			'20 min drive from 2219 Main Street',
+		)
+		expect(formatIsochroneName('walking', 'time', [15], '  Café  ')).toBe('15 min walk from Café')
+		expect(formatIsochroneName('driving', 'time', [10], '')).toBe('10 min drive')
+		expect(formatIsochroneName('driving', 'time', [10], null)).toBe('10 min drive')
 	})
 })

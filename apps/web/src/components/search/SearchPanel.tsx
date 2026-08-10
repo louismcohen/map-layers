@@ -1,4 +1,4 @@
-import { MapIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { PolygonIcon, XIcon } from '@phosphor-icons/react';
 import type { MapRef } from 'react-map-gl';
 import { IsochroneDialog } from '@/components/isochrone/IsochroneDialog';
 import { Button } from '@/components/ui/button';
@@ -83,7 +83,7 @@ export function SearchPanel({ mapRef }: SearchPanelProps) {
                             onClick={() => setQuery('')}
                             aria-label='Clear search'
                         >
-                            <XMarkIcon className='size-4' />
+                            <XIcon className='size-4' />
                         </Button>
                     ) : null}
                 </div>
@@ -167,7 +167,10 @@ export function SearchPanel({ mapRef }: SearchPanelProps) {
                                         });
                                     }}
                                 >
-                                    <MapIcon className='size-4' />
+                                    <PolygonIcon
+                                        weight='fill'
+                                        className='size-4'
+                                    />
                                 </Button>
                             </li>
                         );
