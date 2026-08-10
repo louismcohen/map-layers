@@ -47,6 +47,16 @@ export function SearchPanel({ mapRef }: SearchPanelProps) {
             ? `layer:${destination.layerId}`
             : destination.mode;
 
+    // Base UI Select.Value shows the raw value unless `items` maps value → label.
+    const destItems = [
+        { value: 'new-layer', label: 'New layer' },
+        { value: 'root', label: 'Top level' },
+        ...layers.map((layer) => ({
+            value: `layer:${layer.id}`,
+            label: layer.name,
+        })),
+    ];
+
     return (
         <div className='flex min-h-0 flex-1 flex-col overflow-hidden'>
             <div className='shrink-0 border-b border-sidebar-border px-3 py-2'>
@@ -205,6 +215,7 @@ export function SearchPanel({ mapRef }: SearchPanelProps) {
                     </Label>
                     <Select
                         value={destValue}
+                        items={destItems}
                         onValueChange={(value) => {
                             if (value == null) return;
                             if (value === 'root')
