@@ -1,12 +1,16 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { DocNode, NodeId } from '@map-layers/domain';
+import type { IsochroneProfile } from '@map-layers/domain';
 import {
     CaretRightIcon,
+    CarProfileIcon,
     DotsThreeVerticalIcon,
     EyeIcon,
     EyeSlashIcon,
-    PolygonIcon,
+    type Icon,
+    PersonSimpleBikeIcon,
+    PersonSimpleWalkIcon,
 } from '@phosphor-icons/react';
 import { motion } from 'motion/react';
 import { useEffect, useState } from 'react';
@@ -24,6 +28,12 @@ import { cn } from '@/lib/utils';
 const rowHeightTransition = {
     duration: 0.2,
     ease: [0.22, 1, 0.36, 1] as const,
+};
+
+const ISOCHRONE_PROFILE_ICON: Record<IsochroneProfile, Icon> = {
+    driving: CarProfileIcon,
+    cycling: PersonSimpleBikeIcon,
+    walking: PersonSimpleWalkIcon,
 };
 
 export type SortableRowProps = {
@@ -107,6 +117,9 @@ export function SortableRow({
     const showStyle = isLayer || (isIsochrone && isRoot);
     const showVisibility = isLayer || isIsochrone;
     const visible = isLayer || isIsochrone ? node.visible : true;
+    const IsochroneProfileIcon = isIsochrone
+        ? ISOCHRONE_PROFILE_ICON[node.profile]
+        : null;
 
     return (
         // Sortable transform must live on this overflow-hidden wrapper: translating
@@ -159,12 +172,12 @@ export function SortableRow({
                                 aria-hidden
                             />
                         </button>
-                    ) : isIsochrone ? (
+                    ) : IsochroneProfileIcon ? (
                         <span
                             className='flex h-5 w-5 shrink-0 items-center justify-center text-muted-foreground'
                             aria-hidden
                         >
-                            <PolygonIcon
+                            <IsochroneProfileIcon
                                 weight='fill'
                                 className='h-3.5 w-3.5'
                             />
