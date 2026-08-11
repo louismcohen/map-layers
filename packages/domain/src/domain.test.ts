@@ -15,6 +15,7 @@ import {
 	setLayerVisible,
 	ungroupLayer,
 } from './mutations'
+import { isochroneArea, pickSmallestIsochroneId } from './isochroneArea'
 import { resolveDropTarget } from './resolveDropTarget'
 import {
 	flattenTree,
@@ -532,5 +533,41 @@ describe('domain tree', () => {
 			parentId: b.layerId,
 			index: expect.any(Number),
 		})
+	})
+
+	it('ranks overlapping isochrones by smallest area', () => {
+		const square = (size: number): IsochroneGeoJSON => ({
+			type: 'FeatureCollection',
+			features: [
+				{
+					type: 'Feature',
+					properties: {},
+					geometry: {
+						type: 'Polygon',
+						coordinates: [
+							[
+								[0, 0],
+								[size, 0],
+								[size, size],
+								[0, size],
+								[0, 0],
+							],
+						],
+					},
+				},
+			],
+		})
+
+		expect(isochroneArea(square(1))).toBeLessThan(isochroneArea(square(2)))
+		expect(
+			pickSmallestIsochroneId(
+				['walk', 'drive'],
+				new Map([
+					['walk', isochroneArea(square(1))],
+					['drive', isochroneArea(square(3))],
+				]),
+			),
+		).toBe('walk')
+		expect(pickSmallestIsochroneId(['missing'], new Map([['walk', 1]]))).toBeNull()
 	})
 })

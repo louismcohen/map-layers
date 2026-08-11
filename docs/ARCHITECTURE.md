@@ -3,7 +3,7 @@
 ## Status
 
 - Last updated: 2026-08-10
-- Implemented: living docs; monorepo; domain (+ `resolveDropTarget`); Zustand/IndexedDB; Mapbox (LA default + geolocation); layers panel (**combined color + optional Maki icon** via `LayerStylePicker` + **react-color** `GithubPicker`; **whole-row** drag reorder; Phosphor icons for caret expand / eye visibility / **isochrone walk·bike·drive**); **filled** pins with Maki glyphs (place `maki`, overridable by nearest ancestor layer `maki`); **Google Places Text Search** (Pro field mask + viewport `locationBias` + **Load more** pagination, ~60-result ceiling; pending-on-type + keep prior results until the new page; **No results** only after a settled empty response) with on-map preview pins (random color reused for new layers; **clear** control on search input); Mapbox Search Box client retained but unused; **isochrones** (time + distance; walk/bike/drive; user-chosen minutes/miles; create from search-row icon or place `…` menu; place-origin isochrones bind via `originPlaceId` — UI-nested under the place, move/delete locked, short names; GeoJSON `Source`/`Layer`; provider-isolated Mapbox client with **denoise + generalize + Turf polygonSmooth**); fit bounds (places/layers only); modals/toasts; UI orchestration hooks (`usePlaceSearch`, `useIsochroneCreate`, `useFlyToUserOnce`, `useMapSidebarPadding`) + shared `mapCamera` helpers; **shadcn/ui (base-rhea / taupe, always light)** chrome — **floating `Sidebar`** (`AppSidebar`: search + layers) over full-bleed map; desktop sidebar **resizable** (280–520px, default 360, `localStorage`); Mapbox **left padding** tracks live `--sidebar-width` so the visual center is the clear map strip (`setPadding` while dragging, `easeTo` on collapse/expand), cleared when the sidebar collapses / on mobile
+- Implemented: living docs; monorepo; domain (+ `resolveDropTarget`); Zustand/IndexedDB; Mapbox (LA default + geolocation); layers panel (**combined color + optional Maki icon** via `LayerStylePicker` + **react-color** `GithubPicker`; **whole-row** drag reorder; Phosphor icons for caret expand / eye visibility / **isochrone walk·bike·drive**); **filled** pins with Maki glyphs (place `maki`, overridable by nearest ancestor layer `maki`); **Google Places Text Search** (Pro field mask + viewport `locationBias` + **Load more** pagination, ~60-result ceiling; pending-on-type + keep prior results until the new page; **No results** only after a settled empty response) with on-map preview pins (random color reused for new layers; **clear** control on search input); Mapbox Search Box client retained but unused; **isochrones** (time + distance; walk/bike/drive; user-chosen minutes/miles; create from search-row icon or place `…` menu; place-origin isochrones bind via `originPlaceId` — UI-nested under the place, move/delete locked, short names; GeoJSON `Source`/`Layer`; **map-click select** via fill `queryRenderedFeatures`, overlaps pick **smallest area** and paint **largest→smallest** so small rings sit on top; provider-isolated Mapbox client with **denoise + generalize + Turf polygonSmooth**); fit bounds (places/layers only); modals/toasts; UI orchestration hooks (`usePlaceSearch`, `useIsochroneCreate`, `useFlyToUserOnce`, `useMapSidebarPadding`) + shared `mapCamera` helpers; **shadcn/ui (base-rhea / taupe, always light)** chrome — **floating `Sidebar`** (`AppSidebar`: search + layers) over full-bleed map; desktop sidebar **resizable** (280–520px, default 360, `localStorage`); Mapbox **left padding** tracks live `--sidebar-width` so the visual center is the clear map strip (`setPadding` while dragging, `easeTo` on collapse/expand), cleared when the sidebar collapses / on mobile
 - In progress: none
 - Next: optional polish (layer opacity, clustering)
 - Deferred: see [Explicitly deferred](#explicitly-deferred)
@@ -222,6 +222,7 @@ Port patterns from `~/Developer/yelp-combinator-frontend` (not a hard dependency
 - Inner glyph = `@mapbox/maki` SVG from effective maki (`getEffectiveMaki`: nearest ancestor layer `maki`, else place `maki`, default `marker`); tinted via `currentColor`
 - Optional: Supercluster + `ClusterMarker` if pin density gets high; start without clustering, add if needed
 - Click pin → select place in tree + lightweight detail popover (name as rename button — pencil slides in from left / out to right on title hover; address; icon actions: isochrone / fit / delete — same as place row `…` menu)
+- Click isochrone fill → select that node in the tree (pins still win via `stopPropagation`). Overlapping fills pick the **smallest area** (`pickSmallestIsochroneId` + stored GeoJSON, not tile-clipped query geometry). Click the same contour again to clear, matching the layers panel. Miss still only dismisses place detail.
 
 Only **effectively visible** places and isochrones render.
 
@@ -230,7 +231,7 @@ Only **effectively visible** places and isochrones render.
 | Content kind           | Mapbox mechanism                                                        |
 | ---------------------- | ----------------------------------------------------------------------- |
 | `place` (points)       | `react-map-gl` HTML `<Marker>`                                          |
-| `isochrone` (polygons) | `Source` + `Layer` (`fill` / `line`) from stored GeoJSON, under markers; stronger fill/line when `selectedNodeIds` includes the node |
+| `isochrone` (polygons) | `Source` + `Layer` (`fill` / `line`) from stored GeoJSON, under markers; painted **largest area first** so smaller rings sit on top; stronger fill/line when `selectedNodeIds` includes the node |
 
 Layer groups stay DOM-tree UI only; they never become Mapbox style layers. Contours hang off the same tree as leaves and paint via GL sources keyed by node id.
 
@@ -310,7 +311,7 @@ Places appear as leaf rows under their layer (indent): name + menu only (no chev
 - Create / rename / delete / ungroup / reorder / reparent
 - Google Places Text Search → add one / many / all (Load more pages)
 - Local persistence (IndexedDB)
-- Place select on map ↔ tree highlight
+- Place select on map ↔ tree highlight; isochrone fill click ↔ tree highlight (smallest overlapping area wins)
 - Fit bounds to layer or selection
 
 ## Explicitly deferred
@@ -346,6 +347,10 @@ Independent leaf content kind in the same nested tree (only **layers** own `chil
 | Client | `@turf/polygon-smooth` | `iterations: 3` — Chaikin corner-cutting |
 
 Swap/replace without domain changes.
+
+### Map select
+
+Clicking a visible fill selects that isochrone (`selectedNodeIds`, place detail closes). HTML pins still take priority. When several contours cover the click, choose the **smallest area** (stacked-pyramid: 15 min walk over 30 min drive). Paint order matches: largest first, smallest last / on top. Area is ranked from stored GeoJSON (`isochroneArea` in domain — relative lng/lat² is enough). A second click on the same contour clears selection, same as a layers-panel row.
 
 ### Persistence / ToS
 

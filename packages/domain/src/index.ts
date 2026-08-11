@@ -27,6 +27,7 @@ export {
 } from './mutations'
 export type { DropTarget } from './resolveDropTarget'
 export { resolveDropTarget } from './resolveDropTarget'
+export { isochroneArea, pickSmallestIsochroneId } from './isochroneArea'
 export type { TreeRow, VisibleIsochrone, VisiblePlace } from './selectors'
 export {
 	collectDescendantIds,

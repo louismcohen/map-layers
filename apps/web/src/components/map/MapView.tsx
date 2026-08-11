@@ -1,6 +1,11 @@
-import { listVisibleIsochrones, listVisiblePlaces } from '@map-layers/domain';
-import { useMemo } from 'react';
-import type { MapRef } from 'react-map-gl';
+import {
+    isochroneArea,
+    listVisibleIsochrones,
+    listVisiblePlaces,
+    pickSmallestIsochroneId,
+} from '@map-layers/domain';
+import { useCallback, useMemo } from 'react';
+import type { MapLayerMouseEvent, MapRef } from 'react-map-gl';
 import { Layer, Map as MapboxMap, Source } from 'react-map-gl';
 import { PlaceMarker } from '@/components/map/PlaceMarker';
 import { UserLocationMarker } from '@/components/map/UserLocationMarker';
@@ -13,6 +18,10 @@ import {
     getMapboxToken,
     MAP_STYLE,
 } from '@/lib/constants';
+import {
+    isochroneFillLayerId,
+    isochroneIdFromFillLayerId,
+} from '@/lib/isochrone';
 import { useDocumentStore } from '@/store/documentStore';
 
 type MapViewProps = {
@@ -44,6 +53,7 @@ export function MapView({ mapRef, userLocation, onMoveEnd }: MapViewProps) {
     const selectedNodeIds = useDocumentStore((s) => s.selectedNodeIds);
     const selectedPlaceId = useDocumentStore((s) => s.selectedPlaceId);
     const selectPlace = useDocumentStore((s) => s.selectPlace);
+    const setSelectedNodeIds = useDocumentStore((s) => s.setSelectedNodeIds);
     const searchPreview = useDocumentStore((s) => s.searchPreview);
     const toggleSearchSelection = useDocumentStore(
         (s) => s.toggleSearchSelection,
@@ -55,9 +65,63 @@ export function MapView({ mapRef, userLocation, onMoveEnd }: MapViewProps) {
         () => listVisiblePlaces(document),
         [document],
     );
-    const visibleIsochrones = useMemo(
-        () => listVisibleIsochrones(document),
-        [document],
+    const visibleIsochrones = useMemo(() => {
+        const items = listVisibleIsochrones(document).map((item) => ({
+            ...item,
+            area: isochroneArea(item.isochrone.geojson),
+        }));
+        items.sort((a, b) => b.area - a.area);
+        return items;
+    }, [document]);
+    const isochroneAreaById = useMemo(
+        () =>
+            new Map(
+                visibleIsochrones.map(({ isochrone, area }) => [
+                    isochrone.id,
+                    area,
+                ]),
+            ),
+        [visibleIsochrones],
+    );
+
+    const handleMapClick = useCallback(
+        (event: MapLayerMouseEvent) => {
+            const map = event.target;
+            const fillLayerIds = visibleIsochrones
+                .map(({ isochrone }) => isochroneFillLayerId(isochrone.id))
+                .filter((layerId) => Boolean(map.getLayer(layerId)));
+            const hitIds = new Set<string>();
+            if (fillLayerIds.length > 0) {
+                for (const feature of map.queryRenderedFeatures(event.point, {
+                    layers: fillLayerIds,
+                })) {
+                    const layerId = feature.layer?.id;
+                    const id = layerId
+                        ? isochroneIdFromFillLayerId(layerId)
+                        : null;
+                    if (id) hitIds.add(id);
+                }
+            }
+            const picked = pickSmallestIsochroneId(hitIds, isochroneAreaById);
+            if (!picked) {
+                selectPlace(null);
+                return;
+            }
+            if (selectedNodeIds.includes(picked)) {
+                setSelectedNodeIds([]);
+                selectPlace(null);
+                return;
+            }
+            setSelectedNodeIds([picked]);
+            selectPlace(null);
+        },
+        [
+            isochroneAreaById,
+            selectPlace,
+            selectedNodeIds,
+            setSelectedNodeIds,
+            visibleIsochrones,
+        ],
     );
 
     return (
@@ -75,7 +139,7 @@ export function MapView({ mapRef, userLocation, onMoveEnd }: MapViewProps) {
                 reuseMaps
                 attributionControl={false}
                 onLoad={onMapReady}
-                onClick={() => selectPlace(null)}
+                onClick={handleMapClick}
                 onMoveStart={(e) => {
                     if (e.originalEvent) markUserInteracted();
                 }}
@@ -94,7 +158,7 @@ export function MapView({ mapRef, userLocation, onMoveEnd }: MapViewProps) {
                             }
                         >
                             <Layer
-                                id={`isochrone-fill-${isochrone.id}`}
+                                id={isochroneFillLayerId(isochrone.id)}
                                 type='fill'
                                 paint={{
                                     'fill-color': hexToRgba(
