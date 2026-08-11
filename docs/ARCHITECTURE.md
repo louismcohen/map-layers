@@ -227,7 +227,7 @@ Only **effectively visible** places and isochrones render.
 | Content kind           | Mapbox mechanism                                                        |
 | ---------------------- | ----------------------------------------------------------------------- |
 | `place` (points)       | `react-map-gl` HTML `<Marker>`                                          |
-| `isochrone` (polygons) | `Source` + `Layer` (`fill` / `line`) from stored GeoJSON, under markers |
+| `isochrone` (polygons) | `Source` + `Layer` (`fill` / `line`) from stored GeoJSON, under markers; stronger fill/line when `selectedNodeIds` includes the node |
 
 Layer groups stay DOM-tree UI only; they never become Mapbox style layers. Contours hang off the same tree as leaves and paint via GL sources keyed by node id.
 

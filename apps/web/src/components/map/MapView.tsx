@@ -41,6 +41,7 @@ function hexToRgba(hex: string, alpha: number): string {
 
 export function MapView({ mapRef, userLocation, onMoveEnd }: MapViewProps) {
     const document = useDocumentStore((s) => s.document);
+    const selectedNodeIds = useDocumentStore((s) => s.selectedNodeIds);
     const selectedPlaceId = useDocumentStore((s) => s.selectedPlaceId);
     const selectPlace = useDocumentStore((s) => s.selectPlace);
     const searchPreview = useDocumentStore((s) => s.searchPreview);
@@ -81,32 +82,40 @@ export function MapView({ mapRef, userLocation, onMoveEnd }: MapViewProps) {
                 onMoveEnd={onMoveEnd}
                 style={{ width: '100%', height: '100%' }}
             >
-                {visibleIsochrones.map(({ isochrone, color }) => (
-                    <Source
-                        key={isochrone.id}
-                        id={`isochrone-${isochrone.id}`}
-                        type='geojson'
-                        data={isochrone.geojson as GeoJSON.FeatureCollection}
-                    >
-                        <Layer
-                            id={`isochrone-fill-${isochrone.id}`}
-                            type='fill'
-                            paint={{
-                                'fill-color': hexToRgba(color, 0.1),
-                                'fill-opacity': 1,
-                            }}
-                        />
-                        <Layer
-                            id={`isochrone-line-${isochrone.id}`}
-                            type='line'
-                            paint={{
-                                'line-color': color,
-                                'line-width': 1.5,
-                                'line-opacity': 0.5,
-                            }}
-                        />
-                    </Source>
-                ))}
+                {visibleIsochrones.map(({ isochrone, color }) => {
+                    const selected = selectedNodeIds.includes(isochrone.id);
+                    return (
+                        <Source
+                            key={isochrone.id}
+                            id={`isochrone-${isochrone.id}`}
+                            type='geojson'
+                            data={
+                                isochrone.geojson as GeoJSON.FeatureCollection
+                            }
+                        >
+                            <Layer
+                                id={`isochrone-fill-${isochrone.id}`}
+                                type='fill'
+                                paint={{
+                                    'fill-color': hexToRgba(
+                                        color,
+                                        selected ? 0.2 : 0.1,
+                                    ),
+                                    'fill-opacity': 1,
+                                }}
+                            />
+                            <Layer
+                                id={`isochrone-line-${isochrone.id}`}
+                                type='line'
+                                paint={{
+                                    'line-color': color,
+                                    'line-width': selected ? 2 : 1.5,
+                                    'line-opacity': selected ? 0.9 : 0.5,
+                                }}
+                            />
+                        </Source>
+                    );
+                })}
                 {visiblePlaces.map(({ place, color, maki }) => (
                     <PlaceMarker
                         key={place.id}
