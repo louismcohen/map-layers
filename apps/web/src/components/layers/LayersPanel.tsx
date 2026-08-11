@@ -129,6 +129,14 @@ export function LayersPanel({ mapRef }: LayersPanelProps) {
 											menuOpen={menuId === row.id}
 											styleOpen={stylePickerId === row.id}
 											onSelect={() => {
+												const alreadySelected =
+													selectedNodeIds.includes(row.id) ||
+													selectedPlaceId === row.id
+												if (alreadySelected) {
+													setSelectedNodeIds([])
+													selectPlace(null)
+													return
+												}
 												setSelectedNodeIds([row.id])
 												if (row.node.kind === 'place') selectPlace(row.id)
 												else selectPlace(null)
