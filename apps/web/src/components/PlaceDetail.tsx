@@ -40,8 +40,7 @@ export function PlaceDetail({ mapRef }: PlaceDetailProps) {
             : null;
     const placeId =
         place?.kind === 'place' && selectedPlaceId ? selectedPlaceId : null;
-    const modalOpen =
-        renameOpen || deleteOpen || isochrone.dialogOpen;
+    const modalOpen = renameOpen || deleteOpen || isochrone.dialogOpen;
 
     useEffect(() => {
         if (!placeId || modalOpen) return;
@@ -68,7 +67,6 @@ export function PlaceDetail({ mapRef }: PlaceDetailProps) {
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{
                             opacity: 0,
-                            y: -4,
                             scale: 1.02,
                             filter: 'blur(4px)',
                         }}

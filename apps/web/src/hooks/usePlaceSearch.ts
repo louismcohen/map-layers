@@ -5,6 +5,9 @@ import { useDebouncedCallback } from 'use-debounce'
 import { type SearchBounds, searchText } from '@/lib/googlePlacesSearch'
 import { type AddTarget, useDocumentStore } from '@/store/documentStore'
 
+/** Wait until typing has paused before hitting Places (not on blur). */
+const SEARCH_DEBOUNCE_MS = 500
+
 export type SearchDestination =
 	| { mode: 'root' }
 	| { mode: 'layer'; layerId: NodeId }
@@ -101,7 +104,7 @@ export function usePlaceSearch(mapRef: React.RefObject<MapRef | null>) {
 		} finally {
 			if (!controller.signal.aborted) setLoading(false)
 		}
-	}, 300)
+	}, SEARCH_DEBOUNCE_MS)
 
 	useEffect(() => {
 		if (!query.trim()) {

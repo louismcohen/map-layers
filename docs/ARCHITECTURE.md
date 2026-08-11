@@ -3,7 +3,7 @@
 ## Status
 
 - Last updated: 2026-08-10
-- Implemented: living docs; monorepo; domain (+ `resolveDropTarget`); Zustand/IndexedDB; Mapbox (LA default + geolocation); layers panel (**combined color + optional Maki icon** via `LayerStylePicker` + **react-color** `GithubPicker`; **whole-row** drag reorder; Phosphor icons for caret expand / eye visibility / **isochrone walk·bike·drive**); **filled** pins with Maki glyphs (place `maki`, overridable by nearest ancestor layer `maki`); **Google Places Text Search** (Pro field mask + viewport `locationBias` + **Load more** pagination, ~60-result ceiling; pending-on-type + keep prior results until the new page; **No results** only after a settled empty response) with on-map preview pins (random color reused for new layers; **clear** control on search input); Mapbox Search Box client retained but unused; **isochrones** (time + distance; walk/bike/drive; user-chosen minutes/miles; create from search-row icon or place `…` menu; place-origin isochrones bind via `originPlaceId` — UI-nested under the place, move/delete locked, short names; GeoJSON `Source`/`Layer`; **map-click select** via fill `queryRenderedFeatures`, overlaps pick **smallest area** and paint **largest→smallest** so small rings sit on top; provider-isolated Mapbox client with **denoise + generalize + Turf polygonSmooth**); fit bounds (places/layers only); modals/toasts; UI orchestration hooks (`usePlaceSearch`, `useIsochroneCreate`, `useFlyToUserOnce`, `useMapSidebarPadding`) + shared `mapCamera` helpers; **shadcn/ui (base-rhea / taupe, always light)** chrome — **floating `Sidebar`** (`AppSidebar`: search + layers) over full-bleed map; desktop sidebar **resizable** (280–520px, default 360, `localStorage`); Mapbox **left padding** tracks live `--sidebar-width` so the visual center is the clear map strip (`setPadding` while dragging, `easeTo` on collapse/expand), cleared when the sidebar collapses / on mobile
+- Implemented: living docs; monorepo; domain (+ `resolveDropTarget`); Zustand/IndexedDB; Mapbox (LA default + geolocation); layers panel (**combined color + optional Phosphor icon** via `LayerStylePicker` + **react-color** `GithubPicker`; persisted layer `maki` migrated from Maki names → Phosphor catalog); **whole-row** drag reorder; Phosphor icons for caret expand / eye visibility / **isochrone walk·bike·drive**); **filled** pins: Phosphor catalog name on layer override; else Maki if place `maki` is a Mapbox name; else Phosphor from Google `featureType` (`MapPin` fallback); **Google Places Text Search** (Pro field mask + viewport `locationBias` + **Load more** pagination, ~60-result ceiling; pending-on-type + keep prior results until the new page; **No results** only after a settled empty response) with on-map preview pins (random color reused for new layers; **clear** control on search input); Mapbox Search Box client retained but unused; **isochrones** (time + distance; walk/bike/drive; user-chosen minutes/miles; create from search-row icon or place `…` menu; place-origin isochrones bind via `originPlaceId` — UI-nested under the place, move/delete locked, short names; GeoJSON `Source`/`Layer`; **map-click select** via fill `queryRenderedFeatures`, overlaps pick **smallest area** and paint **largest→smallest** so small rings sit on top; provider-isolated Mapbox client with **denoise + generalize + Turf polygonSmooth**); fit bounds (places/layers only); modals/toasts; UI orchestration hooks (`usePlaceSearch`, `useIsochroneCreate`, `useFlyToUserOnce`, `useMapSidebarPadding`) + shared `mapCamera` helpers; **shadcn/ui (base-rhea / taupe, always light)** chrome — **floating `Sidebar`** (`AppSidebar`: search + layers) over full-bleed map; desktop sidebar **resizable** (280–520px, default 360, `localStorage`); Mapbox **left padding** tracks live `--sidebar-width` so the visual center is the clear map strip (`setPadding` while dragging, `easeTo` on collapse/expand), cleared when the sidebar collapses / on mobile
 - In progress: none
 - Next: optional polish (layer opacity, clustering)
 - Deferred: see [Explicitly deferred](#explicitly-deferred)
@@ -34,7 +34,7 @@ A solo, local-first web app: full-bleed Mapbox map with a left **floating** shad
 | DnD          | `@dnd-kit` for layer tree reorder/reparent                                                                                                                                                                                                                                    |
 | Motion       | `motion` (pin select / panel transitions)                                                                                                                                                                                                                                     |
 | Toasts       | **sonner** (via shadcn `Toaster`; `pushToast` in the store)                                                                                                                                                                                                                   |
-| Pin glyphs   | `@mapbox/maki` (from Search Box `maki`)                                                                                                                                                                                                                                       |
+| Pin glyphs   | **Phosphor** catalog for layer picker + Google `primaryType`; **Maki** only for leftover Mapbox place `maki` (`googlePlaceIcon.ts`)                                                                                                                                           |
 | Color picker | **react-color** (`GithubPicker`) in `LayerStylePicker`                                                                                                                                                                                                                        |
 | App icons    | **`@phosphor-icons/react`** (layers/search chrome); shadcn primitives use Hugeicons                                                                                                                                                                                           |
 | Search       | **Google Places Text Search (New)** (active); Mapbox Search Box client retained but disconnected (see note below)                                                                                                                                                             |
@@ -43,13 +43,13 @@ A solo, local-first web app: full-bleed Mapbox map with a left **floating** shad
 
 Active search is **[Places Text Search (New)](https://developers.google.com/maps/documentation/places/web-service/text-search)** (`POST /v1/places:searchText`) via `apps/web/src/lib/googlePlacesSearch.ts`:
 
-- debounce + `locationBias.rectangle` from the current map viewport
+- debounce **800ms** after the last keystroke (`useDebouncedCallback` in `usePlaceSearch`) + `locationBias.rectangle` from the current map viewport
 - Pro field mask only: `places.id`, `places.displayName`, `places.formattedAddress`, `places.location`, `places.primaryType`, `nextPageToken` (name + coords + address; no ratings/photos)
 - `pageSize` 20; **Load more** pages with `pageToken` (~3 pages / ~60 results hard ceiling)
 - Enable **Places API (New)** on the GCP key; restrict by HTTP referrer (local + prod origins)
 - `PlaceNode.mapboxId` stores the Google Place ID (legacy field name — no persist migration)
 
-Map tiles, camera padding, and isochrones stay on Mapbox. [`mapboxSearch.ts`](../apps/web/src/lib/mapboxSearch.ts) is kept in-repo but unused by `usePlaceSearch` (easy to re-wire). Google drafts omit `maki`; pin glyphs for Google types are a separate Phosphor mapping.
+Map tiles, camera padding, and isochrones stay on Mapbox. [`mapboxSearch.ts`](../apps/web/src/lib/mapboxSearch.ts) is kept in-repo but unused by `usePlaceSearch` (easy to re-wire). Google drafts omit `maki`; pin glyphs resolve Phosphor from `featureType` (`primaryType`) via [`googlePlaceIcon.ts`](../apps/web/src/lib/googlePlaceIcon.ts) unless a layer override is set. Layer style picker uses the Phosphor catalog; persist **v2** migrates stored Maki names → Phosphor (`Coffee`, `ForkKnife`, …) in the legacy `maki` field.
 
 ---
 
@@ -80,7 +80,7 @@ map-layers/
 | Layer             | Responsibility                                                                                                  |
 | ----------------- | --------------------------------------------------------------------------------------------------------------- |
 | `packages/domain` | Pure document/tree rules (mutations, selectors, `resolveDropTarget`)                                            |
-| `lib/`            | I/O adapters (`googlePlacesSearch` active, `mapboxSearch` dormant, `isochrone/` provider) and Mapbox camera helpers (`mapCamera`) |
+| `lib/`            | I/O adapters (`googlePlacesSearch` active, `mapboxSearch` dormant, `isochrone/` provider), Google→Phosphor pin map (`googlePlaceIcon`), Mapbox camera helpers (`mapCamera`) |
 | `store/`          | Zustand: document + selection + `searchPreview`; wraps domain; toasts via sonner                                |
 | `hooks/`          | React lifecycle + store coordination (`usePlaceSearch`, `useLocation`, camera policies, `useMapSidebarPadding`) |
 | `components/`     | Presentational UI: props/events in, render out (`components/ui` = stock shadcn primitives; `components/sidebar/` = app wrappers for width/resize) |
@@ -130,7 +130,7 @@ type LayerNode = {
     name: string;
     visible: boolean; // own toggle (effective = AND ancestors)
     color: string; // hex; drives pins / fills under this layer
-    maki?: string; // optional Maki icon; when set, overrides place pin glyphs under this layer
+    maki?: string; // optional Phosphor catalog name (legacy field); overrides place pin glyphs under this layer
     collapsed: boolean; // UI-only, persisted for comfort
     children: NodeId[]; // ordered: layers and/or leaf content nodes
 };
@@ -148,7 +148,7 @@ type Document = {
 
 - **Visible:** node is shown iff every ancestor layer has `visible: true` (and for isochrones, the node’s own `visible`). Hidden parent ⇒ all descendants hidden on the map (Figma/Photoshop behavior).
 - **Color:** walk from leaf → parent layers; use the **nearest ancestor layer’s `color`**. Root-level places use `defaultPlaceColor`. Root-level isochrones use their own `color` (panel color control like a layer). Nested isochrones inherit parent layer color.
-- **Maki icon:** walk from leaf → parent layers; use the **nearest ancestor layer with `maki` set**. If none, use the place’s Search Box `maki` (UI falls back to `marker`). Nested layer icon overrides parent for its subtree only.
+- **Pin glyph:** walk from leaf → parent layers; use the **nearest ancestor layer with `maki` set** (Phosphor catalog name). If none, use the place’s Mapbox `maki` if present. If still unset, UI uses Phosphor from `featureType` (Google `primaryType`), default `MapPin`. Nested layer icon overrides parent for its subtree only.
 - Nested layer with its own color overrides parent for its subtree only.
 
 ### Layer naming defaults
@@ -161,7 +161,7 @@ When creating a layer from search: **default name = the search query string** (t
 - `renameNode(id, name)`
 - `setLayerVisible(id, visible)` / `toggleLayerVisible(id)`
 - `setLayerColor(id, color)`
-- `setLayerMaki(id, maki | undefined)` — optional pin glyph override for the layer’s subtree
+- `setLayerMaki(id, maki | undefined)` — optional Phosphor catalog name override for the layer’s subtree (legacy field name)
 - `moveNodes({ ids, targetParentId | root, index })` — reorder + reparent
 - `resolveDropTarget(doc, activeId, overId)` — map DnD over-target to `{ parentId, index }` for `moveNodes` (place→layer nests; layer→layer reorders as sibling)
 - `ungroupLayer(id)` — splice layer’s `children` into parent at the layer’s index; delete the layer node
@@ -211,7 +211,7 @@ Single `documentStore`:
 - Ephemeral panel state (query string, add destination) lives in `usePlaceSearch`, not the store
 - Actions wrap `packages/domain` mutations, then persist
 
-Persist middleware → IndexedDB key `map-layers:v1`. No account.
+Persist middleware → IndexedDB key `map-layers:v1` (persist **version 2**: migrate layer `maki` from Maki names to Phosphor catalog). No account.
 
 ### Map rendering (dual path by design)
 
@@ -219,7 +219,7 @@ Port patterns from `~/Developer/yelp-combinator-frontend` (not a hard dependency
 
 - Map shell like `MapRender.tsx`: same style URL + token env
 - Pins like `IconMarker` with `variant?: 'outline' | 'filled'` (**default `filled`**): 32px circle, shadow, selected spring scale — **`color` prop from effective layer color**. Filled = layer color fill (`${color}F2`), light border, soft top highlight, white glyph (yelp-combinator visited look). Outline = light gray gradient fill, colored border + glyph.
-- Inner glyph = `@mapbox/maki` SVG from effective maki (`getEffectiveMaki`: nearest ancestor layer `maki`, else place `maki`, default `marker`); tinted via `currentColor`
+- Inner glyph (`getEffectiveMaki`): Phosphor catalog name (layer override) → Phosphor; else Mapbox `maki` on the place → `@mapbox/maki` SVG; else Phosphor from `featureType`, default `MapPin`. Filled pins use Phosphor `weight="fill"` in white.
 - Optional: Supercluster + `ClusterMarker` if pin density gets high; start without clustering, add if needed
 - Click pin → select place in tree + lightweight detail popover (name as rename button — pencil slides in from left / out to right on title hover; address; icon actions: isochrone / fit / delete — same as place row `…` menu)
 - Click isochrone fill → select that node in the tree (pins still win via `stopPropagation`). Overlapping fills pick the **smallest area** (`pickSmallestIsochroneId` + stored GeoJSON, not tile-clipped query geometry). Click the same contour again to clear, matching the layers panel. Miss still only dismisses place detail.
@@ -277,7 +277,7 @@ Each row:
 - Whole-row drag (no grab handle; disabled while renaming; `PointerSensor` distance threshold keeps clicks on controls working)
 - Expand/collapse (`CaretRightIcon`, CSS `rotate-90` when open; layers only); child rows animate height via Motion `AnimatePresence` (`height: 0` ↔ `auto`, ~200ms)
 - Visibility toggle (`EyeIcon` / `EyeSlashIcon`; layers only)
-- Style control (layers only): colored Maki glyph → one popover with **react-color** `GithubPicker` + filterable icon grid; **Auto** clears icon override so place icons show (`LayerStylePicker`)
+- Style control (layers only): colored Phosphor glyph → one popover with **react-color** `GithubPicker` + filterable Phosphor catalog grid; **Auto** clears icon override so place icons show (`LayerStylePicker`)
 - Name (inline rename on double-click / Enter)
 - Context menu (`DotsThreeVerticalIcon`): layers — New sublayer, Ungroup, Rename, Fit to Map, Delete; places — Add Isochrone…, Rename, Fit to Map, Delete (same actions on the map place-detail popover)
 
@@ -289,13 +289,13 @@ Behaviors:
 | Reorder / nest | Drag **places** onto a layer to nest; drag a **layer** onto another layer to reorder as a sibling (same parent). Nest layers via **New sublayer**. No undo yet — prefer deliberate nesting. |
 | Ungroup        | Children move to parent (or root); layer removed                                                                                                                                            |
 | Hide layer     | Eye off; descendants disappear from map; nested eyes remain but ineffective until parent shown                                                                                              |
-| Color / icon   | Combined style picker; color updates pins immediately; optional Maki overrides descendant glyphs                                                                                            |
+| Color / icon   | Combined style picker; color updates pins immediately; optional Phosphor catalog name overrides descendant glyphs                                                                           |
 
 Places appear as leaf rows under their layer (indent): name + menu only (no chevron/eye/style picker). Selecting a place highlights it and opens detail — **camera stays put** (use Fit to Map from the row `…` menu or the detail popover to frame). Clicking an already-selected row clears selection (and closes place detail). Place detail actions mirror the place row menu.
 
 ### Search → add flow
 
-1. User types query in Search section (or Cmd-K later); far-right **clear** (×) empties the query and drops preview pins immediately. Typing sets **Searching…** before debounce; prior results/pins stay until the new page lands. **No results** only after a settled empty response for the current query. Google Text Search biases to the current viewport (`locationBias.rectangle`).
+1. User types query in Search section (or Cmd-K later); far-right **clear** (×) empties the query and drops preview pins immediately. Typing sets **Searching…** immediately; the request waits **800ms** after the last change (idle, not blur). Prior results/pins stay until the new page lands. **No results** only after a settled empty response for the current query. Google Text Search biases to the current viewport (`locationBias.rectangle`).
 2. Results list with checkboxes; “Select all”; **Load more** when Google returns `nextPageToken` (hidden while a new query is in flight). Preview pins appear on the map; **camera stays put** (no fit/fly on results).
 3. Destination control: **Top level** | **Existing layer…** | **New layer** (name prefilled with query).
 4. Confirm **Add** → places inserted; if New layer, create layer then add places as children; **camera stays put** (use Fit to map from the row menu to frame).
@@ -307,7 +307,7 @@ Places appear as leaf rows under their layer (indent): name + menu only (no chev
 - Nested layers + root-level places
 - Show/hide with ancestor cascade
 - Per-layer color → pin color
-- Optional per-layer Maki icon → overrides descendant pin glyphs (else place Search Box `maki`)
+- Optional per-layer Phosphor icon → overrides descendant pin glyphs (else place Mapbox `maki`, else Phosphor from Google `featureType`)
 - Create / rename / delete / ungroup / reorder / reparent
 - Google Places Text Search → add one / many / all (Load more pages)
 - Local persistence (IndexedDB)

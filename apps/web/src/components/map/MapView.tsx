@@ -189,6 +189,7 @@ export function MapView({ mapRef, userLocation, onMoveEnd }: MapViewProps) {
                         longitude={place.coordinates.lng}
                         color={color}
                         maki={maki}
+                        featureType={place.featureType}
                         selected={selectedPlaceId === place.id}
                         onClick={selectPlace}
                     />
@@ -202,6 +203,7 @@ export function MapView({ mapRef, userLocation, onMoveEnd }: MapViewProps) {
                         longitude={result.coordinates.lng}
                         color={searchPreview.color}
                         maki={result.maki}
+                        featureType={result.featureType}
                         selected={searchPreview.selectedMapboxIds.includes(
                             result.mapboxId,
                         )}

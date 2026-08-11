@@ -22,6 +22,7 @@ import { del, get, set } from 'idb-keyval'
 import { toast } from 'sonner'
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
+import { migrateDocumentLayerIcons } from '@/lib/googlePlaceIcon'
 
 const IDB_KEY = 'map-layers:v1'
 
@@ -253,8 +254,19 @@ export const useDocumentStore = create<DocumentStore>()(
 			name: IDB_KEY,
 			storage: createJSONStorage(() => idbStorage),
 			partialize: (state) => ({ document: state.document }),
+			version: 2,
+			migrate: (persisted, version) => {
+				const state = persisted as { document: Document }
+				if (version < 2) {
+					return { document: migrateDocumentLayerIcons(state.document) }
+				}
+				return state
+			},
 			onRehydrateStorage: () => (state) => {
-				state?.setHydrated(true)
+				if (state) {
+					state.document = migrateDocumentLayerIcons(state.document)
+					state.setHydrated(true)
+				}
 			},
 		},
 	),

@@ -56,7 +56,7 @@ export type LayerNode = {
 	name: string
 	visible: boolean
 	color: string
-	/** Optional Maki icon; when set, overrides place pin glyphs under this layer. */
+	/** Optional pin glyph override (Phosphor catalog name, e.g. Coffee). Legacy field name. */
 	maki?: string
 	collapsed: boolean
 	children: NodeId[]

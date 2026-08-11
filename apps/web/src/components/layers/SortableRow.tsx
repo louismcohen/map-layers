@@ -1,7 +1,6 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import type { DocNode, NodeId } from '@map-layers/domain';
-import type { IsochroneProfile } from '@map-layers/domain';
+import type { DocNode, IsochroneProfile, NodeId } from '@map-layers/domain';
 import {
     CaretRightIcon,
     CarProfileIcon,
@@ -166,8 +165,9 @@ export function SortableRow({
                             <CaretRightIcon
                                 className={cn(
                                     'h-3.5 w-3.5 transition-transform duration-200 ease-out',
-                                    !(isLayer ? node.collapsed : placeCollapsed) &&
-                                        'rotate-90',
+                                    !(isLayer
+                                        ? node.collapsed
+                                        : placeCollapsed) && 'rotate-90',
                                 )}
                                 aria-hidden
                             />
@@ -211,7 +211,7 @@ export function SortableRow({
                                     onCommitEdit(draft);
                                 if (e.key === 'Escape') onCancelEdit();
                             }}
-                            className='h-6 min-w-0 flex-1 rounded-md px-1 text-xs'
+                            className='h-6 min-w-0 flex-1 rounded-md px-2 text-xs'
                         />
                     ) : (
                         <button

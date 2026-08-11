@@ -145,7 +145,7 @@ export function setLayerColor(doc: Document, id: NodeId, color: string): Documen
 	return next
 }
 
-/** Set or clear (`undefined`) the layer’s Maki icon override. */
+/** Set or clear (`undefined`) the layer’s pin glyph override (Phosphor name). */
 export function setLayerMaki(doc: Document, id: NodeId, maki: string | undefined): Document {
 	const next = cloneDoc(doc)
 	const layer = getLayer(next, id)

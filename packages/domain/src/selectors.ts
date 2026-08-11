@@ -88,8 +88,8 @@ export function getEffectiveColor(doc: Document, id: NodeId): string {
 }
 
 /**
- * Pin glyph: nearest ancestor layer with `maki` set wins; otherwise the place’s
- * Search Box `maki` (may be undefined → UI default marker).
+ * Pin glyph: nearest ancestor layer with `maki` set wins (Phosphor catalog
+ * name); otherwise the place’s Search Box `maki` (may be undefined → UI default).
  */
 export function getEffectiveMaki(doc: Document, id: NodeId): string | undefined {
 	const node = doc.nodes[id]

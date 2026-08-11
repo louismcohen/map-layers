@@ -2,6 +2,8 @@ import { motion } from 'motion/react';
 import { memo } from 'react';
 import { Marker } from 'react-map-gl';
 import { MakiGlyph } from '@/components/icons/MakiGlyph';
+import { PhosphorPlaceIcon } from '@/components/icons/PhosphorPlaceIcon';
+import { isPlaceIconName } from '@/lib/googlePlaceIcon';
 import { cn } from '@/lib/utils';
 
 const iconFill = '#ffffff';
@@ -16,6 +18,7 @@ type PlaceMarkerProps = {
     color: string;
     selected: boolean;
     maki?: string;
+    featureType?: string;
     variant?: PlaceMarkerVariant;
     onClick: (id: string) => void;
 };
@@ -28,6 +31,7 @@ function PlaceMarkerComponent({
     color,
     selected,
     maki,
+    featureType,
     variant = 'filled',
     onClick,
 }: PlaceMarkerProps) {
@@ -78,11 +82,25 @@ function PlaceMarkerComponent({
                                 : 'from-transparent',
                         )}
                     >
-                        <MakiGlyph
-                            maki={maki}
-                            color={filled ? iconFill : color}
-                            className='h-4 w-4'
-                        />
+                        {maki && isPlaceIconName(maki) ? (
+                            <PhosphorPlaceIcon
+                                name={maki}
+                                color={filled ? iconFill : color}
+                                className='h-4 w-4'
+                            />
+                        ) : maki ? (
+                            <MakiGlyph
+                                maki={maki}
+                                color={filled ? iconFill : color}
+                                className='h-4 w-4'
+                            />
+                        ) : (
+                            <PhosphorPlaceIcon
+                                featureType={featureType}
+                                color={filled ? iconFill : color}
+                                className='h-4 w-4'
+                            />
+                        )}
                     </div>
                 </motion.div>
                 {/* <div className='font-primary absolute bottom-full left-1/2 mb-1.5 -translate-x-1/2 whitespace-nowrap text-center text-xs drop-shadow-md stroke-1 stroke-white'>

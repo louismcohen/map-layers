@@ -87,7 +87,7 @@ export function SearchPanel({ mapRef }: SearchPanelProps) {
                     <Input
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
-                        placeholder='Coffee, museums, addresses…'
+                        placeholder='Coffee, supermarkets, addresses…'
                         className={query ? 'pr-8' : undefined}
                     />
                     {query ? (
