@@ -4,11 +4,8 @@ import { AppSidebar } from '@/components/AppSidebar';
 import { LocateButton } from '@/components/map/LocateButton';
 import { MapView } from '@/components/map/MapView';
 import { PlaceDetail } from '@/components/PlaceDetail';
-import {
-    SidebarInset,
-    SidebarProvider,
-    SidebarTrigger,
-} from '@/components/ui/sidebar';
+import { AppSidebarProvider } from '@/components/sidebar/AppSidebarProvider';
+import { SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { useLocation } from '@/hooks/useLocation';
@@ -33,8 +30,8 @@ export function App() {
     return (
         <TooltipProvider>
             <div className='relative h-svh w-screen overflow-hidden bg-background text-foreground'>
-                {/* Map under chrome; must sit inside SidebarProvider for padding sync. */}
-                <SidebarProvider className='pointer-events-none relative z-10 h-svh min-h-0 bg-transparent'>
+                {/* Map under chrome; must sit inside AppSidebarProvider for padding sync. */}
+                <AppSidebarProvider className='pointer-events-none relative z-10 h-svh min-h-0 bg-transparent'>
                     <div className='pointer-events-auto absolute inset-0 z-0'>
                         {hydrated ? (
                             <MapView
@@ -65,7 +62,7 @@ export function App() {
                         </div>
                         <Toaster position='bottom-right' />
                     </SidebarInset>
-                </SidebarProvider>
+                </AppSidebarProvider>
             </div>
         </TooltipProvider>
     );

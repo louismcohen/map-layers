@@ -59,7 +59,7 @@ export function SearchPanel({ mapRef }: SearchPanelProps) {
 
     return (
         <div className='flex min-h-0 flex-1 flex-col overflow-hidden'>
-            <div className='shrink-0 border-b border-sidebar-border px-3 py-2'>
+            <div className='shrink-0 border-b border-sidebar-border p-3'>
                 <div className='mb-2 flex items-center justify-between gap-2'>
                     <h1 className='font-heading text-sm font-semibold tracking-wide'>
                         Search Places

@@ -20,24 +20,24 @@ A solo, local-first web app: full-bleed Mapbox map with a left **floating** shad
 
 ## Stack (locked)
 
-| Layer | Choice |
-| --- | --- |
-| Monorepo | **pnpm workspaces + Turborepo** |
-| App | React 19 + Vite + TypeScript |
-| CSS | Tailwind CSS v4 (`@tailwindcss/vite`) |
-| UI | **shadcn/ui** (CLI v4, style **base-rhea**, base color **taupe**, always light `:root` tokens); primitives under `apps/web/src/components/ui`; **react-resizable-panels** (handle primitive; sidebar width is custom drag on the rail) |
-| Lint/format | Biome (root config) |
-| Map | `mapbox-gl` + `react-map-gl` |
-| Map style | `mapbox://styles/louiscohen/cm54miu4700j201qparty6veb` (from yelp-combinator) |
-| Token | `VITE_MAPBOX_ACCESS_TOKEN` in `apps/web/.env` |
-| State | Zustand + persist to **IndexedDB** (`idb-keyval`) |
-| DnD | `@dnd-kit` for layer tree reorder/reparent |
-| Motion | `motion` (pin select / panel transitions) |
-| Toasts | **sonner** (via shadcn `Toaster`; `pushToast` in the store) |
-| Pin glyphs | `@mapbox/maki` (from Search Box `maki`) |
-| Color picker | **react-color** (`GithubPicker`) in `LayerStylePicker` |
-| App icons | **`@phosphor-icons/react`** (layers/search chrome); shadcn primitives use Hugeicons |
-| Search | **Mapbox Search Box API** (see note below) |
+| Layer        | Choice                                                                                                                                                                                                                                                                        |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Monorepo     | **pnpm workspaces + Turborepo**                                                                                                                                                                                                                                               |
+| App          | React 19 + Vite + TypeScript                                                                                                                                                                                                                                                  |
+| CSS          | Tailwind CSS v4 (`@tailwindcss/vite`)                                                                                                                                                                                                                                         |
+| UI           | **shadcn/ui** (CLI v4, style **base-rhea**, base color **taupe**, always light `:root` tokens); stock primitives under `apps/web/src/components/ui` (do not fork — app chrome wraps them); **react-resizable-panels** via shadcn `resizable`; **shadcn preset** --preset b6FBTNihZj |
+| Lint/format  | Biome (root config)                                                                                                                                                                                                                                                           |
+| Map          | `mapbox-gl` + `react-map-gl`                                                                                                                                                                                                                                                  |
+| Map style    | `mapbox://styles/louiscohen/cm54miu4700j201qparty6veb` (from yelp-combinator)                                                                                                                                                                                                 |
+| Token        | `VITE_MAPBOX_ACCESS_TOKEN` in `apps/web/.env`                                                                                                                                                                                                                                 |
+| State        | Zustand + persist to **IndexedDB** (`idb-keyval`)                                                                                                                                                                                                                             |
+| DnD          | `@dnd-kit` for layer tree reorder/reparent                                                                                                                                                                                                                                    |
+| Motion       | `motion` (pin select / panel transitions)                                                                                                                                                                                                                                     |
+| Toasts       | **sonner** (via shadcn `Toaster`; `pushToast` in the store)                                                                                                                                                                                                                   |
+| Pin glyphs   | `@mapbox/maki` (from Search Box `maki`)                                                                                                                                                                                                                                       |
+| Color picker | **react-color** (`GithubPicker`) in `LayerStylePicker`                                                                                                                                                                                                                        |
+| App icons    | **`@phosphor-icons/react`** (layers/search chrome); shadcn primitives use Hugeicons                                                                                                                                                                                           |
+| Search       | **Mapbox Search Box API** (see note below)                                                                                                                                                                                                                                    |
 
 ### Search API note (important)
 
@@ -75,13 +75,13 @@ map-layers/
 
 ### App layering (`apps/web`)
 
-| Layer | Responsibility |
-| --- | --- |
-| `packages/domain` | Pure document/tree rules (mutations, selectors, `resolveDropTarget`) |
-| `lib/` | I/O adapters (`mapboxSearch`, `isochrone/` provider) and Mapbox camera helpers (`mapCamera`) |
-| `store/` | Zustand: document + selection + `searchPreview`; wraps domain; toasts via sonner |
-| `hooks/` | React lifecycle + store coordination (`usePlaceSearch`, `useLocation`, camera policies, `useMapSidebarPadding`) |
-| `components/` | Presentational UI: props/events in, render out (`components/ui` = shadcn primitives) |
+| Layer             | Responsibility                                                                                                  |
+| ----------------- | --------------------------------------------------------------------------------------------------------------- |
+| `packages/domain` | Pure document/tree rules (mutations, selectors, `resolveDropTarget`)                                            |
+| `lib/`            | I/O adapters (`mapboxSearch`, `isochrone/` provider) and Mapbox camera helpers (`mapCamera`)                    |
+| `store/`          | Zustand: document + selection + `searchPreview`; wraps domain; toasts via sonner                                |
+| `hooks/`          | React lifecycle + store coordination (`usePlaceSearch`, `useLocation`, camera policies, `useMapSidebarPadding`) |
+| `components/`     | Presentational UI: props/events in, render out (`components/ui` = stock shadcn primitives; `components/sidebar/` = app wrappers for width/resize) |
 
 No backend package in v1.
 
@@ -97,48 +97,48 @@ Flat node map + ordered child ID lists (same pattern as Figma: easy move/reparen
 type NodeId = string;
 
 type PlaceNode = {
-  id: NodeId;
-  kind: 'place';
-  name: string;
-  mapboxId: string; // Search Box feature id
-  coordinates: { lng: number; lat: number };
-  address?: string;
-  featureType?: string; // e.g. poi, address
-  maki?: string; // Search Box Maki icon name (e.g. restaurant, cafe)
-  raw?: unknown; // trimmed Search Box payload if useful later
+    id: NodeId;
+    kind: 'place';
+    name: string;
+    mapboxId: string; // Search Box feature id
+    coordinates: { lng: number; lat: number };
+    address?: string;
+    featureType?: string; // e.g. poi, address
+    maki?: string; // Search Box Maki icon name (e.g. restaurant, cafe)
+    raw?: unknown; // trimmed Search Box payload if useful later
 };
 
 type IsochroneNode = {
-  id: NodeId;
-  kind: 'isochrone';
-  name: string;
-  center: { lng: number; lat: number };
-  profile: 'walking' | 'cycling' | 'driving';
-  metric: 'time' | 'distance';
-  contours: number[]; // minutes or meters (user-chosen single value at create)
-  geojson: FeatureCollection; // stored from provider response
-  color: string; // used when at root; ignored for paint when under a layer
-  visible: boolean; // own toggle; ANDed with ancestor layers when nested
-  originPlaceId?: NodeId; // when set: UI-nested under place; move/delete follow place; cannot reparent away
+    id: NodeId;
+    kind: 'isochrone';
+    name: string;
+    center: { lng: number; lat: number };
+    profile: 'walking' | 'cycling' | 'driving';
+    metric: 'time' | 'distance';
+    contours: number[]; // minutes or meters (user-chosen single value at create)
+    geojson: FeatureCollection; // stored from provider response
+    color: string; // used when at root; ignored for paint when under a layer
+    visible: boolean; // own toggle; ANDed with ancestor layers when nested
+    originPlaceId?: NodeId; // when set: UI-nested under place; move/delete follow place; cannot reparent away
 };
 
 type LayerNode = {
-  id: NodeId;
-  kind: 'layer';
-  name: string;
-  visible: boolean; // own toggle (effective = AND ancestors)
-  color: string; // hex; drives pins / fills under this layer
-  maki?: string; // optional Maki icon; when set, overrides place pin glyphs under this layer
-  collapsed: boolean; // UI-only, persisted for comfort
-  children: NodeId[]; // ordered: layers and/or leaf content nodes
+    id: NodeId;
+    kind: 'layer';
+    name: string;
+    visible: boolean; // own toggle (effective = AND ancestors)
+    color: string; // hex; drives pins / fills under this layer
+    maki?: string; // optional Maki icon; when set, overrides place pin glyphs under this layer
+    collapsed: boolean; // UI-only, persisted for comfort
+    children: NodeId[]; // ordered: layers and/or leaf content nodes
 };
 
 type ContentNode = PlaceNode | IsochroneNode;
 
 type Document = {
-  rootChildren: NodeId[];
-  nodes: Record<NodeId, LayerNode | ContentNode>;
-  defaultPlaceColor: string; // for places sitting at root
+    rootChildren: NodeId[];
+    nodes: Record<NodeId, LayerNode | ContentNode>;
+    defaultPlaceColor: string; // for places sitting at root
 };
 ```
 
@@ -224,9 +224,9 @@ Only **effectively visible** places and isochrones render.
 
 **Render split:**
 
-| Content kind | Mapbox mechanism |
-| --- | --- |
-| `place` (points) | `react-map-gl` HTML `<Marker>` |
+| Content kind           | Mapbox mechanism                                                        |
+| ---------------------- | ----------------------------------------------------------------------- |
+| `place` (points)       | `react-map-gl` HTML `<Marker>`                                          |
 | `isochrone` (polygons) | `Source` + `Layer` (`fill` / `line`) from stored GeoJSON, under markers |
 
 Layer groups stay DOM-tree UI only; they never become Mapbox style layers. Contours hang off the same tree as leaves and paint via GL sources keyed by node id.
@@ -256,8 +256,8 @@ Layer groups stay DOM-tree UI only; they never become Mapbox style layers. Conto
 └────────────────────────────────────────────────────┘
 ```
 
-- **Floating shadcn `Sidebar`** (`variant="floating"`) via `AppSidebar` + `SidebarProvider` / `SidebarInset`; width `--sidebar-width` from live `widthPx` (default **360px**, clamp **280–520**), persisted in `localStorage` (`sidebar_width`), with the floating `p-2` gutter so the map shows around the rounded panel.
-- **Desktop resize:** drag the right-edge rail (shadcn `ResizableHandle` grip) to change width; click without drag still toggles offcanvas. Not wrapped in `ResizablePanelGroup` (fights `fixed` floating + offcanvas). Mobile sheet width unchanged.
+- **Floating shadcn `Sidebar`** (`variant="floating"`) via `AppSidebar` + `AppSidebarProvider` (wraps stock `SidebarProvider` / `SidebarInset`); width `--sidebar-width` from live `widthPx` (default **360px**, clamp **300–520**), persisted in `localStorage` (`sidebar_width`), with the floating `p-2` gutter so the map shows around the rounded panel.
+- **Desktop resize:** `SidebarResizeHandle` in `components/sidebar/` (not `components/ui`) — drag the right edge (shadcn `ResizableHandle` grip look) to change width; click without drag still toggles offcanvas. Not wrapped in `ResizablePanelGroup` (fights `fixed` floating + offcanvas). Mobile sheet width unchanged.
 - **`AppSidebar` split:** `SearchPanel` always top; separator + `LayersPanel` pinned to the bottom (`mt-auto`). Each sizes to content and may exceed half the sidebar when the other is smaller; when both need space they shrink together (≈50% ceiling). Overflow scrolls inside each panel.
 - Map is **full-bleed** under the chrome; inset overlays (locate, place detail, toasts) sit in `SidebarInset` (transparent, pointer-events gated) so controls stay clear of the panel.
 - **Map camera center offset:** `useMapSidebarPadding` sets Mapbox `padding.left` to the **live** sidebar container width while the desktop sidebar is open. The geographic “center” (flyTo, fitBounds, `getCenter`, search proximity) is the midpoint of the clear strip from the sidebar container’s right edge to the viewport’s right edge. Drag resize uses `setPadding` (no animation); collapse/expand still `easeTo` ~200ms; **0** on mobile (sheet overlay) and when offcanvas-collapsed.
@@ -279,13 +279,13 @@ Each row:
 
 Behaviors:
 
-| Action | Behavior |
-| --- | --- |
-| Create layer | Modal asks name → insert under selection or root |
+| Action         | Behavior                                                                                                                                                                                    |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Create layer   | Modal asks name → insert under selection or root                                                                                                                                            |
 | Reorder / nest | Drag **places** onto a layer to nest; drag a **layer** onto another layer to reorder as a sibling (same parent). Nest layers via **New sublayer**. No undo yet — prefer deliberate nesting. |
-| Ungroup | Children move to parent (or root); layer removed |
-| Hide layer | Eye off; descendants disappear from map; nested eyes remain but ineffective until parent shown |
-| Color / icon | Combined style picker; color updates pins immediately; optional Maki overrides descendant glyphs |
+| Ungroup        | Children move to parent (or root); layer removed                                                                                                                                            |
+| Hide layer     | Eye off; descendants disappear from map; nested eyes remain but ineffective until parent shown                                                                                              |
+| Color / icon   | Combined style picker; color updates pins immediately; optional Maki overrides descendant glyphs                                                                                            |
 
 Places appear as leaf rows under their layer (indent): name + menu only (no chevron/eye/style picker). Selecting a place highlights it and opens detail — **camera stays put** (use Fit to Map from the row `…` menu or the detail popover to frame). Place detail actions mirror the place row menu.
 
@@ -336,10 +336,10 @@ Independent leaf content kind in the same nested tree (only **layers** own `chil
 
 `IsochroneProvider` interface in `apps/web/src/lib/isochrone/`; current impl `mapboxIsochroneProvider` calls [Mapbox Isochrone API](https://docs.mapbox.com/api/navigation/isochrone/) with `polygons=true`, then softens the contour:
 
-| Step | Method | Params |
-| --- | --- | --- |
-| API | `denoise` | `0.1` — drop small noisy islands |
-| API | `generalize` | `200` m — Douglas–Peucker simplify |
+| Step   | Method                 | Params                                   |
+| ------ | ---------------------- | ---------------------------------------- |
+| API    | `denoise`              | `0.1` — drop small noisy islands         |
+| API    | `generalize`           | `200` m — Douglas–Peucker simplify       |
 | Client | `@turf/polygon-smooth` | `iterations: 3` — Chaikin corner-cutting |
 
 Swap/replace without domain changes.
@@ -352,7 +352,7 @@ Store full GeoJSON plus `center` / `profile` / `metric` / `contours` on the node
 
 ## Implementation phases
 
-1. **Scaffold** — pnpm + turbo + `apps/web` + `packages/domain` + Biome + Tailwind v4 + env template *(living docs already seeded)*
+1. **Scaffold** — pnpm + turbo + `apps/web` + `packages/domain` + Biome + Tailwind v4 + env template _(living docs already seeded)_
 2. **Domain** — tree types, mutations, effective visibility/color selectors + unit tests
 3. **Store + persist** — Zustand document store wired to domain
 4. **Map shell** — Mapbox style/token, empty map, locate control
@@ -380,11 +380,11 @@ VITE_MAPBOX_ACCESS_TOKEN=<token>
 
 **This file (`docs/ARCHITECTURE.md`) is the source of truth** for product intent, domain model, UI, deferred work, and how the system works today.
 
-| File | Role |
-| --- | --- |
-| [`docs/ARCHITECTURE.md`](./ARCHITECTURE.md) | Canonical living design + current status |
-| [`AGENTS.md`](../AGENTS.md) | Short entrypoint: read/update Architecture before/after work |
-| [`.cursor/rules/architecture-doc.mdc`](../.cursor/rules/architecture-doc.mdc) | `alwaysApply: true` rule that enforces the habit |
+| File                                                                          | Role                                                         |
+| ----------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| [`docs/ARCHITECTURE.md`](./ARCHITECTURE.md)                                   | Canonical living design + current status                     |
+| [`AGENTS.md`](../AGENTS.md)                                                   | Short entrypoint: read/update Architecture before/after work |
+| [`.cursor/rules/architecture-doc.mdc`](../.cursor/rules/architecture-doc.mdc) | `alwaysApply: true` rule that enforces the habit             |
 
 ### Agent obligations
 

@@ -1,7 +1,8 @@
 import type { MapRef } from 'react-map-gl';
 import { LayersPanel } from '@/components/layers/LayersPanel';
 import { SearchPanel } from '@/components/search/SearchPanel';
-import { Sidebar, SidebarRail, SidebarSeparator } from '@/components/ui/sidebar';
+import { SidebarResizeHandle } from '@/components/sidebar/SidebarResizeHandle';
+import { Sidebar, SidebarSeparator } from '@/components/ui/sidebar';
 
 type AppSidebarProps = {
     mapRef: React.RefObject<MapRef | null>;
@@ -23,7 +24,7 @@ export function AppSidebar({ mapRef }: AppSidebarProps) {
                     <LayersPanel mapRef={mapRef} />
                 </div>
             </div>
-            <SidebarRail />
+            <SidebarResizeHandle />
         </Sidebar>
     );
 }

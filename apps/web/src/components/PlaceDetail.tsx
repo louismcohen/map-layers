@@ -45,7 +45,17 @@ export function PlaceDetail({ mapRef }: PlaceDetailProps) {
 
     return (
         <>
-            <div className='absolute right-4 bottom-16 left-4 z-20 mx-auto max-w-md rounded-xl border border-border bg-card/95 p-4 text-card-foreground shadow-2xl backdrop-blur'>
+            <motion.div
+                initial={{
+                    opacity: 0,
+                    y: 16,
+                    scale: 0.95,
+                }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 16, scale: 1.02, filter: 'blur(10px)' }}
+                transition={{ duration: 0.2 }}
+                className='absolute right-4 bottom-16 left-4 z-20 mx-auto max-w-md rounded-xl border border-border bg-card/95 p-4 text-card-foreground shadow-2xl backdrop-blur'
+            >
                 <div className='mb-1 flex items-start justify-between gap-3'>
                     <h2 className='min-w-0 flex-1 font-heading text-sm font-semibold'>
                         <button
@@ -166,7 +176,7 @@ export function PlaceDetail({ mapRef }: PlaceDetailProps) {
                         <TrashIcon className='size-4' aria-hidden />
                     </Button>
                 </div>
-            </div>
+            </motion.div>
 
             <PromptModal
                 open={renameOpen}
