@@ -9,7 +9,13 @@ export const DEFAULT_ZOOM = 13
 
 /** Desktop floating sidebar container width (`--sidebar-width`); includes inner `p-2`. */
 export const SIDEBAR_WIDTH_PX = 360
-export const SIDEBAR_WIDTH_CSS = `${SIDEBAR_WIDTH_PX}px`
+export const SIDEBAR_WIDTH_MIN_PX = 300
+export const SIDEBAR_WIDTH_MAX_PX = 520
+export const SIDEBAR_WIDTH_STORAGE_KEY = 'sidebar_width'
+
+export function clampSidebarWidth(px: number): number {
+	return Math.min(SIDEBAR_WIDTH_MAX_PX, Math.max(SIDEBAR_WIDTH_MIN_PX, Math.round(px)))
+}
 
 export function getMapboxToken(): string {
 	const token = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN

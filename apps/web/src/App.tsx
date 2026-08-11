@@ -12,7 +12,6 @@ import {
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { useLocation } from '@/hooks/useLocation';
-import { SIDEBAR_WIDTH_CSS } from '@/lib/constants';
 import { useDocumentStore } from '@/store/documentStore';
 
 export function App() {
@@ -35,14 +34,7 @@ export function App() {
         <TooltipProvider>
             <div className='relative h-svh w-screen overflow-hidden bg-background text-foreground'>
                 {/* Map under chrome; must sit inside SidebarProvider for padding sync. */}
-                <SidebarProvider
-                    className='pointer-events-none relative z-10 h-svh min-h-0 bg-transparent'
-                    style={
-                        {
-                            '--sidebar-width': SIDEBAR_WIDTH_CSS,
-                        } as React.CSSProperties
-                    }
-                >
+                <SidebarProvider className='pointer-events-none relative z-10 h-svh min-h-0 bg-transparent'>
                     <div className='pointer-events-auto absolute inset-0 z-0'>
                         {hydrated ? (
                             <MapView

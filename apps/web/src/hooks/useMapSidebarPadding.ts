@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react'
 import type { MapRef } from 'react-map-gl'
 import { useSidebar } from '@/components/ui/sidebar'
-import { SIDEBAR_WIDTH_PX } from '@/lib/constants'
 
 /** Matches shadcn sidebar gap width transition. */
 const SIDEBAR_PADDING_DURATION_MS = 200
@@ -25,11 +24,13 @@ function paddingForLeft(left: number): MapPadding {
  * until then.
  */
 export function useMapSidebarPadding(mapRef: React.RefObject<MapRef | null>) {
-	const { open, isMobile } = useSidebar()
+	const { open, isMobile, widthPx } = useSidebar()
 	const mapReadyRef = useRef(false)
 	const leftRef = useRef(0)
+	const openRef = useRef(open)
+	const isMobileRef = useRef(isMobile)
 
-	const left = !isMobile && open ? SIDEBAR_WIDTH_PX : 0
+	const left = !isMobile && open ? widthPx : 0
 	leftRef.current = left
 	const mapPadding = paddingForLeft(left)
 
@@ -57,8 +58,12 @@ export function useMapSidebarPadding(mapRef: React.RefObject<MapRef | null>) {
 
 	useEffect(() => {
 		if (!mapReadyRef.current) return
-		applyPadding(left, true)
-	}, [applyPadding, left])
+		const openOrMobileChanged =
+			openRef.current !== open || isMobileRef.current !== isMobile
+		openRef.current = open
+		isMobileRef.current = isMobile
+		applyPadding(left, openOrMobileChanged)
+	}, [applyPadding, left, open, isMobile])
 
 	return { mapPadding, onMapReady }
 }
