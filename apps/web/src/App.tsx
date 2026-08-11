@@ -5,7 +5,8 @@ import { LocateButton } from '@/components/map/LocateButton';
 import { MapView } from '@/components/map/MapView';
 import { PlaceDetail } from '@/components/PlaceDetail';
 import { AppSidebarProvider } from '@/components/sidebar/AppSidebarProvider';
-import { SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
+import { SidebarToggleButton } from '@/components/sidebar/SidebarToggleButton';
+import { SidebarInset } from '@/components/ui/sidebar';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { useLocation } from '@/hooks/useLocation';
@@ -49,9 +50,7 @@ export function App() {
 
                     {/* Offset by sidebar width; transparent so the map shows through. */}
                     <SidebarInset className='pointer-events-none min-h-0 bg-transparent'>
-                        <div className='pointer-events-auto absolute top-3 left-3 z-20 md:hidden'>
-                            <SidebarTrigger className='border border-border bg-background/90 shadow-sm backdrop-blur' />
-                        </div>
+                        <SidebarToggleButton variant='overlay' />
                         <LocateButton
                             mapRef={mapRef}
                             userLocation={userLocation}

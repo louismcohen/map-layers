@@ -83,7 +83,7 @@ map-layers/
 | `lib/`            | I/O adapters (`googlePlacesSearch` active, `mapboxSearch` dormant, `isochrone/` provider), Google→Phosphor pin map (`googlePlaceIcon`), Mapbox camera helpers (`mapCamera`) |
 | `store/`          | Zustand: document + selection + `searchPreview`; wraps domain; toasts via sonner                                |
 | `hooks/`          | React lifecycle + store coordination (`usePlaceSearch`, `useLocation`, camera policies, `useMapSidebarPadding`) |
-| `components/`     | Presentational UI: props/events in, render out (`components/ui` = stock shadcn primitives; `components/sidebar/` = app wrappers for width/resize) |
+| `components/`     | Presentational UI: props/events in, render out (`components/ui` = stock shadcn primitives; `components/sidebar/` = app wrappers for width/resize/toggle) |
 
 No backend package in v1.
 
@@ -261,11 +261,12 @@ Active: `apps/web/src/lib/googlePlacesSearch.ts` (`searchText`). Dormant: `apps/
 ```
 
 - **Floating shadcn `Sidebar`** (`variant="floating"`) via `AppSidebar` + `AppSidebarProvider` (wraps stock `SidebarProvider` / `SidebarInset`); width `--sidebar-width` from live `widthPx` (default **360px**, clamp **300–520**), persisted in `localStorage` (`sidebar_width`), with the floating `p-2` gutter so the map shows around the rounded panel.
-- **Desktop resize:** `SidebarResizeHandle` in `components/sidebar/` (not `components/ui`) — drag the right edge (shadcn `ResizableHandle` grip look) to change width; click without drag still toggles offcanvas. Not wrapped in `ResizablePanelGroup` (fights `fixed` floating + offcanvas). Mobile sheet width unchanged.
+- **Desktop resize:** `SidebarResizeHandle` in `components/sidebar/` (not `components/ui`) — drag the right edge (shadcn `ResizableHandle` grip look) to change width. Drag only; no click-to-collapse. Handle is hidden when collapsed. Not wrapped in `ResizablePanelGroup` (fights `fixed` floating + offcanvas). Mobile sheet width unchanged.
+- **Collapse / reopen:** one `SidebarToggleButton` (Phosphor `Sidebar`, duotone) — `variant="header"` opposite **Search Places**; `variant="overlay"` is the same control as a top-left map button when desktop is offcanvas-collapsed (and always on mobile).
 - **`AppSidebar` split:** `SearchPanel` always top; separator + `LayersPanel` pinned to the bottom (`mt-auto`). Each sizes to content and may exceed half the sidebar when the other is smaller; when both need space they shrink together (≈50% ceiling). Overflow scrolls inside each panel.
 - Map is **full-bleed** under the chrome; inset overlays (locate, place detail, toasts) sit in `SidebarInset` (transparent, pointer-events gated) so controls stay clear of the panel.
 - **Map camera center offset:** `useMapSidebarPadding` sets Mapbox `padding.left` to the **live** sidebar container width while the desktop sidebar is open. The geographic “center” (flyTo, fitBounds, `getCenter`, search proximity) is the midpoint of the clear strip from the sidebar container’s right edge to the viewport’s right edge. Drag resize uses `setPadding` (no animation); collapse/expand still `easeTo` ~200ms; **0** on mobile (sheet overlay) and when offcanvas-collapsed.
-- Desktop: collapsible offcanvas (`⌘/Ctrl+B`, rail click); mobile: sheet + `SidebarTrigger`.
+- Desktop: collapsible offcanvas (`⌘/Ctrl+B` or header `SidebarToggleButton`); collapsed state is the overlay variant of the same button. Mobile: sheet + overlay variant.
 - Body `overflow: hidden`, `h-svh`. Light sidebar tokens (`bg-sidebar`, etc.) — not dark glass, not purple/cream AI defaults.
 - Theme is **always light** (`:root` tokens only; no `dark` class / theme toggle in v1).
 - Layer / pin colors remain **data-driven hex** (not theme tokens). User-location marker stays semantic blue.

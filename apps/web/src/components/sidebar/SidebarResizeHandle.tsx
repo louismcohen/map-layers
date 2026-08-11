@@ -8,13 +8,13 @@ const RESIZE_THRESHOLD_PX = 4
 /**
  * Right-edge drag handle for the floating sidebar.
  * Uses shadcn `ResizableHandle` visuals; does not sit in `components/ui`.
- * Click without drag still toggles offcanvas.
+ * Drag only — collapse is `SidebarToggleButton` in the search header.
  */
 export function SidebarResizeHandle({
 	className,
 	...props
 }: React.ComponentProps<'button'>) {
-	const { toggleSidebar, state, isMobile } = useSidebar()
+	const { state, isMobile } = useSidebar()
 	const { widthPx, setWidthPx, setResizing } = useSidebarWidth()
 	const dragRef = React.useRef<{
 		pointerId: number
@@ -36,15 +36,16 @@ export function SidebarResizeHandle({
 		[setResizing],
 	)
 
+	if (isMobile || !expanded) return null
+
 	return (
 		<button
 			type='button'
 			data-slot='sidebar-resize-handle'
-			aria-label={expanded ? 'Resize sidebar' : 'Toggle Sidebar'}
+			aria-label='Resize sidebar'
 			tabIndex={-1}
-			title={expanded ? 'Drag to resize, click to hide' : 'Toggle Sidebar'}
+			title='Drag to resize'
 			onPointerDown={(event) => {
-				if (isMobile || !expanded) return
 				draggedRef.current = false
 				event.currentTarget.setPointerCapture(event.pointerId)
 				dragRef.current = {
@@ -67,26 +68,18 @@ export function SidebarResizeHandle({
 				setWidthPx(drag.startWidth + dx)
 			}}
 			onPointerUp={(event) => {
-				const wasDrag = draggedRef.current
 				stopTracking(event)
-				if (!wasDrag) toggleSidebar()
 			}}
 			onPointerCancel={(event) => {
 				stopTracking(event)
 			}}
 			className={cn(
-				'pointer-events-auto absolute inset-y-0 z-20 hidden w-4 touch-none group-data-[side=left]:-right-4 group-data-[side=right]:left-0 after:absolute after:inset-y-0 after:start-1/2 after:w-1 after:-translate-x-1/2 hover:after:bg-sidebar-border sm:flex',
-				'cursor-ew-resize',
-				'[[data-side=left][data-state=collapsed]_&]:cursor-e-resize',
-				'group-data-[collapsible=offcanvas]:translate-x-0',
-				'[[data-side=left][data-collapsible=offcanvas]_&]:-right-2',
+				'pointer-events-auto absolute inset-y-0 z-20 hidden w-4 cursor-ew-resize touch-none group-data-[side=left]:-right-4 group-data-[side=right]:left-0 after:absolute after:inset-y-0 after:start-1/2 after:w-1 after:-translate-x-1/2 hover:after:bg-sidebar-border sm:flex',
 				className,
 			)}
 			{...props}
 		>
-			{expanded && (
-				<div className='pointer-events-none absolute top-1/2 left-1/2 z-10 h-6 w-1 -translate-x-1/2 -translate-y-1/2 shrink-0 rounded-lg bg-border' />
-			)}
+			<div className='pointer-events-none absolute top-1/2 left-1/2 z-10 h-6 w-1 -translate-x-1/2 -translate-y-1/2 shrink-0 rounded-lg bg-border' />
 		</button>
 	)
 }

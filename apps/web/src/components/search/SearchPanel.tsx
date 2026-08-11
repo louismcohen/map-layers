@@ -1,6 +1,7 @@
 import { PolygonIcon, XIcon } from '@phosphor-icons/react';
 import type { MapRef } from 'react-map-gl';
 import { IsochroneDialog } from '@/components/isochrone/IsochroneDialog';
+import { SidebarToggleButton } from '@/components/sidebar/SidebarToggleButton';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -67,21 +68,23 @@ export function SearchPanel({ mapRef }: SearchPanelProps) {
                     <h1 className='font-heading text-sm font-semibold tracking-wide'>
                         Search Places
                     </h1>
-                    {/* <h2 className='text-xs font-semibold tracking-wide text-muted-foreground uppercase'>
-                        Search places
-                    </h2> */}
-                    {searchPreview ? (
-                        <span
-                            className='inline-flex items-center gap-1.5 text-[11px] text-muted-foreground'
-                            title='Preview / new-layer color'
-                        >
+                    <div className='flex items-center gap-1'>
+                        {searchPreview ? (
                             <span
-                                className='h-3 w-3 rounded-sm border border-border'
-                                style={{ backgroundColor: searchPreview.color }}
-                            />
-                            Pin color
-                        </span>
-                    ) : null}
+                                className='inline-flex items-center gap-1.5 text-[11px] text-muted-foreground'
+                                title='Preview / new-layer color'
+                            >
+                                <span
+                                    className='h-3 w-3 rounded-sm border border-border'
+                                    style={{
+                                        backgroundColor: searchPreview.color,
+                                    }}
+                                />
+                                Pin color
+                            </span>
+                        ) : null}
+                        <SidebarToggleButton variant='header' />
+                    </div>
                 </div>
                 <div className='relative'>
                     <Input
