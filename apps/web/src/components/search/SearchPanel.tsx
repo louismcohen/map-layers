@@ -35,9 +35,12 @@ export function SearchPanel({ mapRef }: SearchPanelProps) {
         results,
         selected,
         searchPreview,
+        nextPageToken,
         toggleSearchSelection,
         selectAll,
         addSelected,
+        loadMore,
+        loadingMore,
     } = usePlaceSearch(mapRef);
 
     const isochrone = useIsochroneCreate();
@@ -189,6 +192,20 @@ export function SearchPanel({ mapRef }: SearchPanelProps) {
                         );
                     })}
                 </ul>
+                {nextPageToken && !loading ? (
+                    <div className='px-1 pt-2'>
+                        <Button
+                            type='button'
+                            variant='ghost'
+                            size='xs'
+                            className='w-full'
+                            disabled={loadingMore}
+                            onClick={loadMore}
+                        >
+                            {loadingMore ? 'Loading…' : 'Load more'}
+                        </Button>
+                    </div>
+                ) : null}
             </div>
 
             {results.length > 0 ? (

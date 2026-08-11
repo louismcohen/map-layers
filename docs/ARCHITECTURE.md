@@ -3,7 +3,7 @@
 ## Status
 
 - Last updated: 2026-08-10
-- Implemented: living docs; monorepo; domain (+ `resolveDropTarget`); Zustand/IndexedDB; Mapbox (LA default + geolocation); layers panel (**combined color + optional Maki icon** via `LayerStylePicker` + **react-color** `GithubPicker`; **whole-row** drag reorder; Phosphor icons for caret expand / eye visibility / **isochrone walk·bike·drive**); **filled** pins with Maki glyphs (place `maki`, overridable by nearest ancestor layer `maki`); Search Box with on-map preview pins (random color reused for new layers; **clear** control on search input); **isochrones** (time + distance; walk/bike/drive; user-chosen minutes/miles; create from search-row icon or place `…` menu; place-origin isochrones bind via `originPlaceId` — UI-nested under the place, move/delete locked, short names; GeoJSON `Source`/`Layer`; provider-isolated Mapbox client with **denoise + generalize + Turf polygonSmooth**); fit bounds (places/layers only); modals/toasts; UI orchestration hooks (`usePlaceSearch`, `useIsochroneCreate`, `useFlyToUserOnce`, `useMapSidebarPadding`) + shared `mapCamera` helpers; **shadcn/ui (base-rhea / taupe, always light)** chrome — **floating `Sidebar`** (`AppSidebar`: search + layers) over full-bleed map; desktop sidebar **resizable** (280–520px, default 360, `localStorage`); Mapbox **left padding** tracks live `--sidebar-width` so the visual center is the clear map strip (`setPadding` while dragging, `easeTo` on collapse/expand), cleared when the sidebar collapses / on mobile
+- Implemented: living docs; monorepo; domain (+ `resolveDropTarget`); Zustand/IndexedDB; Mapbox (LA default + geolocation); layers panel (**combined color + optional Maki icon** via `LayerStylePicker` + **react-color** `GithubPicker`; **whole-row** drag reorder; Phosphor icons for caret expand / eye visibility / **isochrone walk·bike·drive**); **filled** pins with Maki glyphs (place `maki`, overridable by nearest ancestor layer `maki`); **Google Places Text Search** (Pro field mask + viewport `locationBias` + **Load more** pagination, ~60-result ceiling; pending-on-type + keep prior results until the new page; **No results** only after a settled empty response) with on-map preview pins (random color reused for new layers; **clear** control on search input); Mapbox Search Box client retained but unused; **isochrones** (time + distance; walk/bike/drive; user-chosen minutes/miles; create from search-row icon or place `…` menu; place-origin isochrones bind via `originPlaceId` — UI-nested under the place, move/delete locked, short names; GeoJSON `Source`/`Layer`; provider-isolated Mapbox client with **denoise + generalize + Turf polygonSmooth**); fit bounds (places/layers only); modals/toasts; UI orchestration hooks (`usePlaceSearch`, `useIsochroneCreate`, `useFlyToUserOnce`, `useMapSidebarPadding`) + shared `mapCamera` helpers; **shadcn/ui (base-rhea / taupe, always light)** chrome — **floating `Sidebar`** (`AppSidebar`: search + layers) over full-bleed map; desktop sidebar **resizable** (280–520px, default 360, `localStorage`); Mapbox **left padding** tracks live `--sidebar-width` so the visual center is the clear map strip (`setPadding` while dragging, `easeTo` on collapse/expand), cleared when the sidebar collapses / on mobile
 - In progress: none
 - Next: optional polish (layer opacity, clustering)
 - Deferred: see [Explicitly deferred](#explicitly-deferred)
@@ -29,7 +29,7 @@ A solo, local-first web app: full-bleed Mapbox map with a left **floating** shad
 | Lint/format  | Biome (root config)                                                                                                                                                                                                                                                           |
 | Map          | `mapbox-gl` + `react-map-gl`                                                                                                                                                                                                                                                  |
 | Map style    | `mapbox://styles/louiscohen/cm54miu4700j201qparty6veb` (from yelp-combinator)                                                                                                                                                                                                 |
-| Token        | `VITE_MAPBOX_ACCESS_TOKEN` in `apps/web/.env`                                                                                                                                                                                                                                 |
+| Token        | `VITE_MAPBOX_ACCESS_TOKEN` (map + isochrones) and `VITE_GOOGLE_MAPS_API_KEY` (place search) in `apps/web/.env`                                                                                                                                                                |
 | State        | Zustand + persist to **IndexedDB** (`idb-keyval`)                                                                                                                                                                                                                             |
 | DnD          | `@dnd-kit` for layer tree reorder/reparent                                                                                                                                                                                                                                    |
 | Motion       | `motion` (pin select / panel transitions)                                                                                                                                                                                                                                     |
@@ -37,17 +37,19 @@ A solo, local-first web app: full-bleed Mapbox map with a left **floating** shad
 | Pin glyphs   | `@mapbox/maki` (from Search Box `maki`)                                                                                                                                                                                                                                       |
 | Color picker | **react-color** (`GithubPicker`) in `LayerStylePicker`                                                                                                                                                                                                                        |
 | App icons    | **`@phosphor-icons/react`** (layers/search chrome); shadcn primitives use Hugeicons                                                                                                                                                                                           |
-| Search       | **Mapbox Search Box API** (see note below)                                                                                                                                                                                                                                    |
+| Search       | **Google Places Text Search (New)** (active); Mapbox Search Box client retained but disconnected (see note below)                                                                                                                                                             |
 
 ### Search API note (important)
 
-Mapbox Geocoding was the original ask. **Geocoding v6 no longer returns POIs** (restaurants, shops, etc.) — only addresses/places in the administrative sense. For a “places” product, v1 will use **[Search Box API](https://docs.mapbox.com/api/search/search-box/)** (`/search/searchbox/v1/...`) with:
+Active search is **[Places Text Search (New)](https://developers.google.com/maps/documentation/places/web-service/text-search)** (`POST /v1/places:searchText`) via `apps/web/src/lib/googlePlacesSearch.ts`:
 
-- debounce + `proximity` / `bbox` from current map viewport
-- session tokens for Suggest → Retrieve
-- permanent storage eligibility respected for saved places (Mapbox terms: do not persist temporary geocode-only results without the permanent/storage-allowed path)
+- debounce + `locationBias.rectangle` from the current map viewport
+- Pro field mask only: `places.id`, `places.displayName`, `places.formattedAddress`, `places.location`, `places.primaryType`, `nextPageToken` (name + coords + address; no ratings/photos)
+- `pageSize` 20; **Load more** pages with `pageToken` (~3 pages / ~60 results hard ceiling)
+- Enable **Places API (New)** on the GCP key; restrict by HTTP referrer (local + prod origins)
+- `PlaceNode.mapboxId` stores the Google Place ID (legacy field name — no persist migration)
 
-If pure address geocoding is needed later, add Geocoding v6 as a second mode behind the same `PlaceSearchProvider` interface.
+Map tiles, camera padding, and isochrones stay on Mapbox. [`mapboxSearch.ts`](../apps/web/src/lib/mapboxSearch.ts) is kept in-repo but unused by `usePlaceSearch` (easy to re-wire). Google drafts omit `maki`; pin glyphs for Google types are a separate Phosphor mapping.
 
 ---
 
@@ -78,7 +80,7 @@ map-layers/
 | Layer             | Responsibility                                                                                                  |
 | ----------------- | --------------------------------------------------------------------------------------------------------------- |
 | `packages/domain` | Pure document/tree rules (mutations, selectors, `resolveDropTarget`)                                            |
-| `lib/`            | I/O adapters (`mapboxSearch`, `isochrone/` provider) and Mapbox camera helpers (`mapCamera`)                    |
+| `lib/`            | I/O adapters (`googlePlacesSearch` active, `mapboxSearch` dormant, `isochrone/` provider) and Mapbox camera helpers (`mapCamera`) |
 | `store/`          | Zustand: document + selection + `searchPreview`; wraps domain; toasts via sonner                                |
 | `hooks/`          | React lifecycle + store coordination (`usePlaceSearch`, `useLocation`, camera policies, `useMapSidebarPadding`) |
 | `components/`     | Presentational UI: props/events in, render out (`components/ui` = stock shadcn primitives; `components/sidebar/` = app wrappers for width/resize) |
@@ -100,7 +102,7 @@ type PlaceNode = {
     id: NodeId;
     kind: 'place';
     name: string;
-    mapboxId: string; // Search Box feature id
+    mapboxId: string; // external place id (Google Place ID from active search; legacy name)
     coordinates: { lng: number; lat: number };
     address?: string;
     featureType?: string; // e.g. poi, address
@@ -195,7 +197,8 @@ flowchart LR
   Store --> TreeOps
   Store --> Selectors
   Store --> IDB[(IndexedDB)]
-  SearchClient --> MapboxSearch[Mapbox Search Box]
+  SearchClient --> GooglePlaces[Google Places Text Search]
+  mapboxSearchDormant[mapboxSearch.ts dormant]
   MapView --> MapboxGL[Mapbox GL + custom style]
 ```
 
@@ -233,11 +236,11 @@ Layer groups stay DOM-tree UI only; they never become Mapbox style layers. Conto
 
 ### Search client
 
-`apps/web/src/lib/mapboxSearch.ts`:
+Active: `apps/web/src/lib/googlePlacesSearch.ts` (`searchText`). Dormant: `apps/web/src/lib/mapboxSearch.ts` (`forwardSearch`).
 
-1. Forward (debounced) with `proximity` = map center and `bbox` = current viewport (`minLon,minLat,maxLon,maxLat`)
-2. Normalize features to `PlaceDraft` (coordinates + optional `maki` in one request; no Suggest→Retrieve session needed for forward)
-3. Multi-select in results UI; add selected drafts into the tree
+1. Debounced Text Search with `locationBias.rectangle` = current viewport; `loading` flips on as soon as the query changes (no empty-state flash)
+2. Normalize places to `PlaceDraft` (`mapboxId` ← Place ID; `featureType` ← `primaryType`; no `maki`); keep the previous preview until the new page replaces it
+3. Multi-select in results UI; **Load more** appends the next page (dedupe by `mapboxId`); add selected drafts into the tree
 
 ---
 
@@ -287,12 +290,12 @@ Behaviors:
 | Hide layer     | Eye off; descendants disappear from map; nested eyes remain but ineffective until parent shown                                                                                              |
 | Color / icon   | Combined style picker; color updates pins immediately; optional Maki overrides descendant glyphs                                                                                            |
 
-Places appear as leaf rows under their layer (indent): name + menu only (no chevron/eye/style picker). Selecting a place highlights it and opens detail — **camera stays put** (use Fit to Map from the row `…` menu or the detail popover to frame). Place detail actions mirror the place row menu.
+Places appear as leaf rows under their layer (indent): name + menu only (no chevron/eye/style picker). Selecting a place highlights it and opens detail — **camera stays put** (use Fit to Map from the row `…` menu or the detail popover to frame). Clicking an already-selected row clears selection (and closes place detail). Place detail actions mirror the place row menu.
 
 ### Search → add flow
 
-1. User types query in Search section (or Cmd-K later); far-right **clear** (×) empties the query and drops preview pins. Forward search uses map **center** as `proximity` and the current viewport as `bbox` (Mapbox Search Box hard-filters to that box).
-2. Results list with checkboxes; “Select all”. Preview pins appear on the map; **camera stays put** (no fit/fly on results).
+1. User types query in Search section (or Cmd-K later); far-right **clear** (×) empties the query and drops preview pins immediately. Typing sets **Searching…** before debounce; prior results/pins stay until the new page lands. **No results** only after a settled empty response for the current query. Google Text Search biases to the current viewport (`locationBias.rectangle`).
+2. Results list with checkboxes; “Select all”; **Load more** when Google returns `nextPageToken` (hidden while a new query is in flight). Preview pins appear on the map; **camera stays put** (no fit/fly on results).
 3. Destination control: **Top level** | **Existing layer…** | **New layer** (name prefilled with query).
 4. Confirm **Add** → places inserted; if New layer, create layer then add places as children; **camera stays put** (use Fit to map from the row menu to frame).
 
@@ -305,7 +308,7 @@ Places appear as leaf rows under their layer (indent): name + menu only (no chev
 - Per-layer color → pin color
 - Optional per-layer Maki icon → overrides descendant pin glyphs (else place Search Box `maki`)
 - Create / rename / delete / ungroup / reorder / reparent
-- Search Box → add one / many / all
+- Google Places Text Search → add one / many / all (Load more pages)
 - Local persistence (IndexedDB)
 - Place select on map ↔ tree highlight
 - Fit bounds to layer or selection
@@ -358,7 +361,7 @@ Store full GeoJSON plus `center` / `profile` / `metric` / `contours` on the node
 4. **Map shell** — Mapbox style/token, empty map, locate control
 5. **Layers panel** — tree UI, visibility, color, create/rename/delete/ungroup, dnd
 6. **Pins** — adapted IconMarker driven by effective color; selection sync
-7. **Search** — Search Box client + results + add-to-target flow
+7. **Search** — Google Places Text Search client + results + Load more + add-to-target flow (Mapbox Search Box client retained unused)
 8. **Polish** — fit bounds, empty states, keyboard rename, confirm dialogs
 9. **Doc hygiene** — each phase ends with Architecture Status updated to match the tree
 
@@ -370,9 +373,10 @@ Store full GeoJSON plus `center` / `profile` / `metric` / `contours` on the node
 
 ```
 VITE_MAPBOX_ACCESS_TOKEN=<token>
+VITE_GOOGLE_MAPS_API_KEY=<key>
 ```
 
-`.env.example` documents the key name only; do not commit secrets. Token names only in this doc.
+`.env.example` documents the key names only; do not commit secrets. Token names only in this doc. Enable **Places API (New)** on the Google key; restrict by HTTP referrer.
 
 ---
 

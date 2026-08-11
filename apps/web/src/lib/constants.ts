@@ -25,3 +25,12 @@ export function getMapboxToken(): string {
 	}
 	return token
 }
+
+export function getGoogleMapsApiKey(): string {
+	const key = import.meta.env.VITE_GOOGLE_MAPS_API_KEY
+	if (!key) {
+		console.warn('VITE_GOOGLE_MAPS_API_KEY is missing')
+		return ''
+	}
+	return key
+}
