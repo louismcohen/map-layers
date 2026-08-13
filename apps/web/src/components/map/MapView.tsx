@@ -3,6 +3,7 @@ import {
     listVisibleIsochrones,
     listVisiblePlaces,
     pickSmallestIsochroneId,
+    placeProviderKey,
 } from '@map-layers/domain';
 import { useCallback, useMemo } from 'react';
 import type { MapLayerMouseEvent, MapRef } from 'react-map-gl';
@@ -194,22 +195,28 @@ export function MapView({ mapRef, userLocation, onMoveEnd }: MapViewProps) {
                         onClick={selectPlace}
                     />
                 ))}
-                {searchPreview?.results.map((result) => (
-                    <PlaceMarker
-                        key={`search-${result.mapboxId}`}
-                        id={result.mapboxId}
-                        label={result.name}
-                        latitude={result.coordinates.lat}
-                        longitude={result.coordinates.lng}
-                        color={searchPreview.color}
-                        maki={result.maki}
-                        featureType={result.featureType}
-                        selected={searchPreview.selectedMapboxIds.includes(
-                            result.mapboxId,
-                        )}
-                        onClick={toggleSearchSelection}
-                    />
-                ))}
+                {searchPreview?.results.map((result) => {
+                    const providerKey = placeProviderKey(
+                        result.sourceProvider,
+                        result.providerId,
+                    );
+                    return (
+                        <PlaceMarker
+                            key={`search-${providerKey}`}
+                            id={providerKey}
+                            label={result.name}
+                            latitude={result.coordinates.lat}
+                            longitude={result.coordinates.lng}
+                            color={searchPreview.color}
+                            maki={result.maki}
+                            featureType={result.featureType}
+                            selected={searchPreview.selectedProviderKeys.includes(
+                                providerKey,
+                            )}
+                            onClick={toggleSearchSelection}
+                        />
+                    );
+                })}
                 <UserLocationMarker userLocation={userLocation} />
             </MapboxMap>
         </div>

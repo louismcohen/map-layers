@@ -1,4 +1,4 @@
-import { listLayers, type NodeId, pickRandomLayerColor } from '@map-layers/domain'
+import { listLayers, type NodeId, pickRandomLayerColor, placeProviderKey } from '@map-layers/domain'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { MapRef } from 'react-map-gl'
 import { useDebouncedCallback } from 'use-debounce'
@@ -53,8 +53,8 @@ export function usePlaceSearch(mapRef: React.RefObject<MapRef | null>) {
 	const layers = useMemo(() => listLayers(document), [document])
 	const results = searchPreview?.results ?? []
 	const selected = useMemo(
-		() => new Set(searchPreview?.selectedMapboxIds ?? []),
-		[searchPreview?.selectedMapboxIds],
+		() => new Set(searchPreview?.selectedProviderKeys ?? []),
+		[searchPreview?.selectedProviderKeys],
 	)
 
 	const runSearch = useDebouncedCallback(async (value: string) => {
@@ -94,7 +94,7 @@ export function usePlaceSearch(mapRef: React.RefObject<MapRef | null>) {
 			setSearchPreview({
 				color: existingColor ?? pickRandomLayerColor(),
 				results: page.drafts,
-				selectedMapboxIds: [],
+				selectedProviderKeys: [],
 			})
 		} catch (err) {
 			if ((err as Error).name === 'AbortError') return
@@ -158,15 +158,18 @@ export function usePlaceSearch(mapRef: React.RefObject<MapRef | null>) {
 				setSearchPreview({
 					color: pickRandomLayerColor(),
 					results: page.drafts,
-					selectedMapboxIds: [],
+					selectedProviderKeys: [],
 				})
 				return
 			}
 
-			const seen = new Set(preview.results.map((r) => r.mapboxId))
+			const seen = new Set(
+				preview.results.map((r) => placeProviderKey(r.sourceProvider, r.providerId)),
+			)
 			const appended = page.drafts.filter((draft) => {
-				if (seen.has(draft.mapboxId)) return false
-				seen.add(draft.mapboxId)
+				const key = placeProviderKey(draft.sourceProvider, draft.providerId)
+				if (seen.has(key)) return false
+				seen.add(key)
 				return true
 			})
 			if (appended.length === 0) return
@@ -183,13 +186,18 @@ export function usePlaceSearch(mapRef: React.RefObject<MapRef | null>) {
 		}
 	}
 
-	const selectAll = () => setSearchSelection(results.map((r) => r.mapboxId))
+	const selectAll = () =>
+		setSearchSelection(
+			results.map((r) => placeProviderKey(r.sourceProvider, r.providerId)),
+		)
 
 	const addSelected = async () => {
 		if (!searchPreview || selected.size === 0) return
 		setAdding(true)
 		try {
-			const drafts = searchPreview.results.filter((r) => selected.has(r.mapboxId))
+			const drafts = searchPreview.results.filter((r) =>
+				selected.has(placeProviderKey(r.sourceProvider, r.providerId)),
+			)
 			let target: AddTarget
 			if (destination.mode === 'root') target = { type: 'root' }
 			else if (destination.mode === 'layer')

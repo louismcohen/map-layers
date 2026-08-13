@@ -81,7 +81,7 @@ export type AddTarget =
 export type SearchPreview = {
 	color: string
 	results: PlaceDraft[]
-	selectedMapboxIds: string[]
+	selectedProviderKeys: string[]
 }
 
 type DocumentStore = {
@@ -95,8 +95,8 @@ type DocumentStore = {
 	setSelectedNodeIds: (ids: NodeId[]) => void
 	selectPlace: (id: NodeId | null) => void
 	setSearchPreview: (preview: SearchPreview | null) => void
-	toggleSearchSelection: (mapboxId: string) => void
-	setSearchSelection: (mapboxIds: string[]) => void
+	toggleSearchSelection: (providerKey: string) => void
+	setSearchSelection: (providerKeys: string[]) => void
 	pushToast: (message: string) => void
 	createLayer: (name: string, parentId?: NodeId | null) => NodeId | null
 	renameNode: (id: NodeId, name: string) => void
@@ -131,21 +131,21 @@ export const useDocumentStore = create<DocumentStore>()(
 					selectedNodeIds: id ? [id] : getState().selectedNodeIds,
 				}),
 			setSearchPreview: (preview) => setState({ searchPreview: preview }),
-			toggleSearchSelection: (mapboxId) => {
+			toggleSearchSelection: (providerKey) => {
 				const preview = getState().searchPreview
 				if (!preview) return
-				const selected = new Set(preview.selectedMapboxIds)
-				if (selected.has(mapboxId)) selected.delete(mapboxId)
-				else selected.add(mapboxId)
+				const selected = new Set(preview.selectedProviderKeys)
+				if (selected.has(providerKey)) selected.delete(providerKey)
+				else selected.add(providerKey)
 				setState({
-					searchPreview: { ...preview, selectedMapboxIds: [...selected] },
+					searchPreview: { ...preview, selectedProviderKeys: [...selected] },
 				})
 			},
-			setSearchSelection: (mapboxIds) => {
+			setSearchSelection: (providerKeys) => {
 				const preview = getState().searchPreview
 				if (!preview) return
 				setState({
-					searchPreview: { ...preview, selectedMapboxIds: mapboxIds },
+					searchPreview: { ...preview, selectedProviderKeys: providerKeys },
 				})
 			},
 			pushToast: (message) => {
@@ -263,13 +263,13 @@ export const useDocumentStore = create<DocumentStore>()(
 				setState({
 					document: result.doc,
 					searchPreview: null,
-					lastSkippedCount: result.skippedMapboxIds.length,
+					lastSkippedCount: result.skippedProviderKeys.length,
 					selectedNodeIds: result.addedIds.length ? result.addedIds : parentId ? [parentId] : [],
 				})
 
-				if (result.skippedMapboxIds.length > 0) {
+				if (result.skippedProviderKeys.length > 0) {
 					getState().pushToast(
-						`Skipped ${result.skippedMapboxIds.length} duplicate place${result.skippedMapboxIds.length === 1 ? '' : 's'}`,
+						`Skipped ${result.skippedProviderKeys.length} duplicate place${result.skippedProviderKeys.length === 1 ? '' : 's'}`,
 					)
 				}
 				if (result.addedIds.length > 0) {

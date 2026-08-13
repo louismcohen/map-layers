@@ -34,7 +34,7 @@ export type { TreeRow, VisibleIsochrone, VisiblePlace } from './selectors'
 export {
 	collectDescendantIds,
 	collectPlaceIdsInSubtree,
-	findExistingMapboxIds,
+	findExistingProviderKeys,
 	flattenTree,
 	getAncestorLayerIds,
 	getEffectiveColor,
@@ -50,6 +50,7 @@ export {
 	listLayers,
 	listVisibleIsochrones,
 	listVisiblePlaces,
+	placeProviderKey,
 } from './selectors'
 export type {
 	ContentNode,
@@ -64,6 +65,7 @@ export type {
 	NodeId,
 	PlaceDraft,
 	PlaceNode,
+	PlaceSourceProvider,
 } from './types'
 export {
 	DEFAULT_PLACE_COLOR,

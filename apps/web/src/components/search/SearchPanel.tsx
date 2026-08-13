@@ -1,4 +1,5 @@
 import { PolygonIcon, XIcon } from '@phosphor-icons/react';
+import { placeProviderKey } from '@map-layers/domain';
 import type { MapRef } from 'react-map-gl';
 import { IsochroneDialog } from '@/components/isochrone/IsochroneDialog';
 import { SidebarToggleButton } from '@/components/sidebar/SidebarToggleButton';
@@ -126,10 +127,14 @@ export function SearchPanel({ mapRef }: SearchPanelProps) {
                 ) : null}
                 <ul className='space-y-1'>
                     {results.map((result) => {
-                        const checked = selected.has(result.mapboxId);
+                        const providerKey = placeProviderKey(
+                            result.sourceProvider,
+                            result.providerId,
+                        );
+                        const checked = selected.has(providerKey);
                         return (
                             <li
-                                key={result.mapboxId}
+                                key={providerKey}
                                 className='flex items-start gap-0.5'
                             >
                                 {/* Checkbox is the control; label wraps the row for hit target. */}
@@ -143,9 +148,7 @@ export function SearchPanel({ mapRef }: SearchPanelProps) {
                                     <Checkbox
                                         checked={checked}
                                         onCheckedChange={() =>
-                                            toggleSearchSelection(
-                                                result.mapboxId,
-                                            )
+                                            toggleSearchSelection(providerKey)
                                         }
                                         className='mt-0.5'
                                     />

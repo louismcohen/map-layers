@@ -42,7 +42,8 @@ describe('domain tree', () => {
 			places: [
 				{
 					name: 'Blue Bottle',
-					mapboxId: 'poi.1',
+					sourceProvider: 'google',
+					providerId: 'poi.1',
 					coordinates: { lng: -122.4, lat: 37.8 },
 				},
 			],
@@ -74,7 +75,8 @@ describe('domain tree', () => {
 			places: [
 				{
 					name: 'Cafe',
-					mapboxId: 'poi.maki',
+					sourceProvider: 'google',
+					providerId: 'poi.maki',
 					coordinates: { lng: 0, lat: 0 },
 					maki: 'cafe',
 				},
@@ -109,7 +111,8 @@ describe('domain tree', () => {
 			places: [
 				{
 					name: 'Nested Place',
-					mapboxId: 'poi.2',
+					sourceProvider: 'google',
+					providerId: 'poi.2',
 					coordinates: { lng: 0, lat: 0 },
 				},
 			],
@@ -136,12 +139,14 @@ describe('domain tree', () => {
 			places: [
 				{
 					name: 'A',
-					mapboxId: 'a',
+					sourceProvider: 'google',
+					providerId: 'a',
 					coordinates: { lng: 1, lat: 1 },
 				},
 				{
 					name: 'B',
-					mapboxId: 'b',
+					sourceProvider: 'google',
+					providerId: 'b',
 					coordinates: { lng: 2, lat: 2 },
 				},
 			],
@@ -188,7 +193,8 @@ describe('domain tree', () => {
 			places: [
 				{
 					name: 'Same',
-					mapboxId: 'dup',
+					sourceProvider: 'google',
+					providerId: 'dup',
 					coordinates: { lng: 0, lat: 0 },
 				},
 			],
@@ -199,13 +205,14 @@ describe('domain tree', () => {
 			places: [
 				{
 					name: 'Same again',
-					mapboxId: 'dup',
+					sourceProvider: 'google',
+					providerId: 'dup',
 					coordinates: { lng: 1, lat: 1 },
 				},
 			],
 		})
 		expect(second.addedIds).toHaveLength(0)
-		expect(second.skippedMapboxIds).toEqual(['dup'])
+		expect(second.skippedProviderKeys).toEqual(['google:dup'])
 
 		doc = deleteNodes(doc, [layer.layerId])
 		expect(doc.nodes[layer.layerId]).toBeUndefined()
@@ -218,7 +225,8 @@ describe('domain tree', () => {
 			places: [
 				{
 					name: 'Root place',
-					mapboxId: 'root.1',
+					sourceProvider: 'google',
+					providerId: 'root.1',
 					coordinates: { lng: 10, lat: 10 },
 				},
 			],
@@ -239,7 +247,8 @@ describe('domain tree', () => {
 			places: [
 				{
 					name: 'A',
-					mapboxId: 'a',
+					sourceProvider: 'google',
+					providerId: 'a',
 					coordinates: { lng: 0, lat: 0 },
 				},
 			],
@@ -296,8 +305,8 @@ describe('domain tree', () => {
 		const places = addPlaces(doc, {
 			targetParentId: layer.layerId,
 			places: [
-				{ name: 'A', mapboxId: 'a', coordinates: { lng: 0, lat: 0 } },
-				{ name: 'B', mapboxId: 'b', coordinates: { lng: 1, lat: 1 } },
+				{ name: 'A', sourceProvider: 'google', providerId: 'a', coordinates: { lng: 0, lat: 0 } },
+				{ name: 'B', sourceProvider: 'google', providerId: 'b', coordinates: { lng: 1, lat: 1 } },
 			],
 		})
 		doc = places.doc
@@ -402,7 +411,8 @@ describe('domain tree', () => {
 			places: [
 				{
 					name: 'Cafe',
-					mapboxId: 'poi.cafe',
+					sourceProvider: 'google',
+					providerId: 'poi.cafe',
 					coordinates: { lng: -122, lat: 37 },
 				},
 			],
@@ -446,7 +456,8 @@ describe('domain tree', () => {
 			places: [
 				{
 					name: 'Cafe',
-					mapboxId: 'poi.cafe',
+					sourceProvider: 'google',
+					providerId: 'poi.cafe',
 					coordinates: { lng: -122, lat: 37 },
 				},
 			],
@@ -485,7 +496,8 @@ describe('domain tree', () => {
 			places: [
 				{
 					name: 'Cafe',
-					mapboxId: 'poi.cafe',
+					sourceProvider: 'google',
+					providerId: 'poi.cafe',
 					coordinates: { lng: -122, lat: 37 },
 				},
 			],
@@ -578,7 +590,8 @@ describe('domain tree', () => {
 			places: [
 				{
 					name: 'Cafe',
-					mapboxId: 'poi.cafe',
+					sourceProvider: 'google',
+					providerId: 'poi.cafe',
 					coordinates: { lng: -122, lat: 37 },
 				},
 			],
@@ -643,7 +656,8 @@ describe('domain tree', () => {
 			places: [
 				{
 					name: 'Cafe',
-					mapboxId: 'poi.cafe',
+					sourceProvider: 'google',
+					providerId: 'poi.cafe',
 					coordinates: { lng: -122, lat: 37 },
 				},
 			],

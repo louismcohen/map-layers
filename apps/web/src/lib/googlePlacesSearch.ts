@@ -39,7 +39,8 @@ function toDraft(place: SearchTextPlace): PlaceDraft | null {
 	if (!id || lat == null || lng == null) return null
 
 	return {
-		mapboxId: id,
+		sourceProvider: 'google',
+		providerId: id,
 		name: place.displayName?.text?.trim() || 'Untitled place',
 		address: place.formattedAddress,
 		featureType: place.primaryType,

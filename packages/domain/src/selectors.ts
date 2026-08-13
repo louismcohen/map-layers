@@ -218,12 +218,22 @@ export function listLayers(doc: Document): LayerNode[] {
 	return Object.values(doc.nodes).filter((n): n is LayerNode => n.kind === 'layer')
 }
 
-export function findExistingMapboxIds(doc: Document): Set<string> {
-	const ids = new Set<string>()
+/** Composite key for workspace-scoped place dedupe: `sourceProvider:providerId`. */
+export function placeProviderKey(
+	sourceProvider: PlaceNode['sourceProvider'],
+	providerId: string,
+): string {
+	return `${sourceProvider}:${providerId}`
+}
+
+export function findExistingProviderKeys(doc: Document): Set<string> {
+	const keys = new Set<string>()
 	for (const node of Object.values(doc.nodes)) {
-		if (node.kind === 'place') ids.add(node.mapboxId)
+		if (node.kind === 'place') {
+			keys.add(placeProviderKey(node.sourceProvider, node.providerId))
+		}
 	}
-	return ids
+	return keys
 }
 
 export type TreeRow = {

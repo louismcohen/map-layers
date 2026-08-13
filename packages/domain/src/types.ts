@@ -1,15 +1,22 @@
 export type NodeId = string
 
+/** External place search provider that supplied `providerId`. */
+export type PlaceSourceProvider = 'google' | 'mapbox'
+
 export type PlaceNode = {
 	id: NodeId
 	kind: 'place'
 	name: string
-	mapboxId: string
+	/** Which search API issued `providerId`. */
+	sourceProvider: PlaceSourceProvider
+	/** External place id (Google Place ID or Mapbox Search Box mapbox_id). */
+	providerId: string
 	coordinates: { lng: number; lat: number }
 	address?: string
 	featureType?: string
 	/** Mapbox Maki icon name from Search Box (e.g. restaurant, cafe). */
 	maki?: string
+	/** Optional in-memory payload; not persisted to Postgres. */
 	raw?: unknown
 	/** Own toggle; effective visibility still ANDs ancestor layers. */
 	visible: boolean

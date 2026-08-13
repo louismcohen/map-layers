@@ -1,12 +1,13 @@
 import { createId } from './document'
 import {
 	collectDescendantIds,
-	findExistingMapboxIds,
+	findExistingProviderKeys,
 	getLayer,
 	getParentId,
 	getPlace,
 	listAttachedIsochroneIds,
 	listAttachedIsochrones,
+	placeProviderKey,
 } from './selectors'
 import {
 	DEFAULT_PLACE_COLOR,
@@ -285,7 +286,7 @@ export function deleteNodes(doc: Document, ids: NodeId[]): Document {
 export type AddPlacesResult = {
 	doc: Document
 	addedIds: NodeId[]
-	skippedMapboxIds: string[]
+	skippedProviderKeys: string[]
 }
 
 export type AddPlacesInput = {
@@ -297,15 +298,16 @@ export type AddPlacesInput = {
 export function addPlaces(doc: Document, input: AddPlacesInput): AddPlacesResult {
 	const next = cloneDoc(doc)
 	const parentId = input.targetParentId === undefined ? null : input.targetParentId
-	const existing = findExistingMapboxIds(next)
+	const existing = findExistingProviderKeys(next)
 	const addedIds: NodeId[] = []
-	const skippedMapboxIds: string[] = []
+	const skippedProviderKeys: string[] = []
 	const list = getChildList(next, parentId)
 	let index = input.index ?? list.length
 
 	for (const draft of input.places) {
-		if (existing.has(draft.mapboxId)) {
-			skippedMapboxIds.push(draft.mapboxId)
+		const key = placeProviderKey(draft.sourceProvider, draft.providerId)
+		if (existing.has(key)) {
+			skippedProviderKeys.push(key)
 			continue
 		}
 		const id = createId('place')
@@ -313,7 +315,8 @@ export function addPlaces(doc: Document, input: AddPlacesInput): AddPlacesResult
 			id,
 			kind: 'place',
 			name: draft.name,
-			mapboxId: draft.mapboxId,
+			sourceProvider: draft.sourceProvider,
+			providerId: draft.providerId,
 			coordinates: draft.coordinates,
 			address: draft.address,
 			featureType: draft.featureType,
@@ -324,11 +327,11 @@ export function addPlaces(doc: Document, input: AddPlacesInput): AddPlacesResult
 		next.nodes[id] = place
 		list.splice(index, 0, id)
 		index += 1
-		existing.add(draft.mapboxId)
+		existing.add(key)
 		addedIds.push(id)
 	}
 
-	return { doc: next, addedIds, skippedMapboxIds }
+	return { doc: next, addedIds, skippedProviderKeys }
 }
 
 export type AddIsochroneInput = {

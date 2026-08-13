@@ -2,18 +2,18 @@
 name: Supabase multi-user persist
 overview: Replace IndexedDB with Supabase Auth and relational Postgres. The browser talks to PostgREST with the user's JWT; RLS is the security boundary. A mapper converts table rows to the in-memory domain Document (and back). Zustand stays as UI + working copy, without persist middleware.
 todos:
-  - id: supabase-schema
-    content: Migrations + RLS for documents, layers, places, isochrones, and sibling order
-    status: pending
-  - id: auth-ui
-    content: Supabase client (anon key), magic-link login, session JWT, sidebar logout
-    status: pending
-  - id: replace-idb
-    content: Row mapper + hydrate/sync; debounce upserts; never delete-all on empty; logout must not save
-    status: pending
-  - id: env-docs-deploy
-    content: Env example, README + Architecture; notes for static deploy and API key referrer restrict
-    status: pending
+    - id: supabase-schema
+      content: Migrations + RLS; 3-letter id prefixes (wsp/lyr/plc/iso) with CHECK constraints
+      status: pending
+    - id: auth-ui
+      content: Supabase client (anon key), magic-link login, session JWT, sidebar logout
+      status: pending
+    - id: replace-idb
+      content: Row mapper + hydrate/sync; debounce upserts; never delete-all on empty; logout must not save
+      status: pending
+    - id: env-docs-deploy
+      content: Env example, README + Architecture; notes for static deploy and API key referrer restrict
+      status: pending
 isProject: false
 ---
 
@@ -32,6 +32,15 @@ flowchart LR
   Auth[Auth JWT] --> REST
 ```
 
+## What “document” means
+
+Two different things; do not mix them:
+
+- **Domain `Document`** ([`packages/domain`](packages/domain) `types.ts`) — the in-memory tree the UI already uses: `rootChildren`, `nodes`, `defaultPlaceColor`. Zustand holds this working copy. It is not stored as one JSON value.
+- **SQL `workspaces`** — one **header row per user** (`user_id`, `default_place_color`, `updated_at`). Layers, places, isochrones, and `tree_nodes` hang off `workspace_id`. This is not a document blob.
+
+The old Architecture name “document” meant the whole map project (Figma-style). In Postgres that project is a **workspace**.
+
 ## Why Zustand still exists (`documentStore`)
 
 [`apps/web/src/store/documentStore.ts`](apps/web/src/store/documentStore.ts) is not a database. It is the **client working copy**:
@@ -49,11 +58,11 @@ No generic “document database” module. A **mapper** next to the Supabase cli
 
 **Load (PostgREST → domain)**
 
-1. `documents` row for `auth.uid()` (create empty workspace if none)
-2. `select` `layers`, `places`, `isochrones`, `tree_nodes` where `document_id = …`
+1. `workspaces` row for `auth.uid()` (create empty workspace if none)
+2. `select` `layers`, `places`, `isochrones`, `tree_nodes` where `workspace_id = …`
 3. `rowsToDocument`:
-   - each layer/place/isochrone row → `DocNode` (`lng`/`lat` → `coordinates`, `mapbox_id` → `mapboxId`, `origin_place_id` → `originPlaceId`)
-   - `tree_nodes` ordered by `parent_id`, `sort_index` → `rootChildren` and each layer’s `children`
+    - each layer/place/isochrone row → `DocNode` (`lng`/`lat` → `coordinates`, `source_provider`/`provider_id` → `sourceProvider`/`providerId`, `origin_place_id` → `originPlaceId`)
+    - `tree_nodes` ordered by `parent_id`, `sort_index` → `rootChildren` and each layer’s `children`
 
 **Save (domain → PostgREST)**
 
@@ -76,7 +85,7 @@ The Vite app uses `@supabase/supabase-js` with:
 What actually protects data:
 
 1. **Sign-in** (magic link) issues a user JWT. `supabase-js` sends `Authorization: Bearer <jwt>` on every table request.
-2. **RLS** on every table: a row is visible/writable only if it belongs to a `documents` row where `user_id = auth.uid()`. Anon with no session gets zero rows. User A cannot `select`/`update`/`delete` user B’s layers.
+2. **RLS** on every table: a row is visible/writable only if it belongs to a `workspaces` row where `user_id = auth.uid()`. Anon with no session gets zero rows. User A cannot `select`/`update`/`delete` user B’s layers.
 3. **Grants**: `anon` has no useful table rights (or only `insert` into nothing that RLS allows). `authenticated` has CRUD **subject to RLS**.
 4. **Never** put `service_role` in the web app. That key bypasses RLS.
 5. UPDATE policies require a matching SELECT policy (Postgres RLS).
@@ -87,20 +96,104 @@ Mapbox/Google keys stay `VITE_*` for this slice (restrict by HTTP referrer). The
 
 ## Schema (one workspace per user)
 
-`documents`: `id`, `user_id` unique → `auth.users`, `default_place_color`, `updated_at`
+`workspaces`: `id`, `user_id` unique → `auth.users`, `default_place_color`, `updated_at`
 
-- `layers`: `id`, `document_id`, `name`, `visible`, `color`, `maki`, `collapsed`
-- `places`: `id`, `document_id`, `name`, `mapbox_id`, `lng`, `lat`, `address`, `feature_type`, `maki`, `raw` jsonb, `visible`
-- `isochrones`: `id`, `document_id`, `name`, `center_lng`, `center_lat`, `profile`, `metric`, `contours` jsonb, `geojson` jsonb, `color`, `visible`, `origin_place_id` nullable FK → `places(id)` on delete cascade
-- `tree_nodes`: `document_id`, `node_id`, `kind`, `parent_id` nullable, `sort_index` — mixed sibling order
+- `layers`: `id`, `workspace_id`, `name`, `visible`, `color`, `maki`, `collapsed`
+- `places`: `id`, `workspace_id`, `name`, `source_provider` (`google`|`mapbox`), `provider_id`, `lng`, `lat`, `address`, `feature_type`, `maki`, `visible` — unique `(workspace_id, source_provider, provider_id)`
+- `isochrones`: `id`, `workspace_id`, `name`, `center_lng`, `center_lat`, `profile`, `metric`, `contours` jsonb, `geojson` jsonb, `color`, `visible`, `origin_place_id` nullable FK → `places(id)` on delete cascade
+- `tree_nodes`: `workspace_id`, `node_id`, `kind`, `parent_id` nullable, `sort_index` — mixed sibling order
 
-First login: insert an empty `documents` row (no tree rows).
+`tree_nodes.node_id` is polymorphic (`kind` says layer / place / isochrone). `parent_id` is null at root, otherwise a layer id.
+
+```mermaid
+erDiagram
+  auth_users ||--|| workspaces : owns
+  workspaces ||--o{ layers : contains
+  workspaces ||--o{ places : contains
+  workspaces ||--o{ isochrones : contains
+  workspaces ||--o{ tree_nodes : orders
+  layers ||--o{ tree_nodes : "parent_when_nested"
+  places ||--o{ isochrones : "originPlace"
+
+  auth_users {
+    uuid id PK
+    string email
+  }
+
+  workspaces {
+    text id PK
+    uuid user_id UK_FK
+    string default_place_color
+    timestamptz updated_at
+  }
+
+  layers {
+    text id PK
+    text workspace_id FK
+    string name
+    boolean visible
+    string color
+    string maki
+    boolean collapsed
+  }
+
+  places {
+    text id PK
+    text workspace_id FK
+    string name
+    string source_provider
+    string provider_id
+    float lng
+    float lat
+    string address
+    string feature_type
+    string maki
+    boolean visible
+  }
+
+  isochrones {
+    text id PK
+    text workspace_id FK
+    text origin_place_id FK
+    string name
+    float center_lng
+    float center_lat
+    string profile
+    string metric
+    jsonb contours
+    jsonb geojson
+    string color
+    boolean visible
+  }
+
+  tree_nodes {
+    text workspace_id FK
+    text node_id
+    string kind
+    text parent_id
+    int sort_index
+  }
+```
+
+First login: insert an empty `workspaces` row (no tree rows).
+
+## IDs
+
+The **client** generates ids in [`createId`](packages/domain/src/document.ts): `` `${prefix}_${crypto.randomUUID()}` ``. Postgres does not assign them; it CHECKs the prefix. The mapper never mints a second id. (`auth.users.id` is still created by Supabase Auth.)
+
+- `wsp_` — workspaces (once, on first login, before insert)
+- `lyr_` — layers (on create)
+- `plc_` — places (on add)
+- `iso_` — isochrones (on add)
+
+`tree_nodes` has no id: `node_id` is the child’s id; `parent_id` is null or a `lyr_` id. `origin_place_id` is the place’s `plc_` id.
 
 ## App changes
 
 - [`apps/web/src/lib/supabase.ts`](apps/web/src/lib/supabase.ts) — browser client, PKCE, session
 - [`apps/web/src/lib/workspaceMapper.ts`](apps/web/src/lib/workspaceMapper.ts) — row ↔ `Document` + `loadWorkspace` / `saveWorkspace`
 - [`apps/web/src/store/documentStore.ts`](apps/web/src/store/documentStore.ts) — remove persist; hydrate/sync via mapper
+- Domain `createId('lyr'|'plc'|'iso')`; first workspace `createId('wsp')`
 - Login gate + sidebar logout
 - `supabase/migrations/` via `supabase migration new`
 
@@ -153,7 +246,7 @@ Concrete order when it becomes necessary:
 
 1. **Edge Functions for secrets** — Places + Isochrone use a server Mapbox/Google key. Client `lib/` functions change URL from Google/Mapbox to `/functions/v1/...`. Schema and mapper unchanged.
 2. **Postgres RPC** — still no Node app. Use for transactions or sharing rules that are SQL.
-3. **BFF** — mapper’s `loadWorkspace` / `saveWorkspace` call *your* HTTP API with the user JWT; the server uses `service_role` or the user JWT against Postgres. Tables and RLS stay. Zustand and domain stay.
+3. **BFF** — mapper’s `loadWorkspace` / `saveWorkspace` call _your_ HTTP API with the user JWT; the server uses `service_role` or the user JWT against Postgres. Tables and RLS stay. Zustand and domain stay.
 
 What would block this path: sprinkling `supabase.from('places')` through components, or moving domain mutations into SQL-only with no in-memory `Document`. We will not do that in this plan.
 
