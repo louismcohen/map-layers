@@ -1,5 +1,5 @@
-import { PolygonIcon, XIcon } from '@phosphor-icons/react';
 import { placeProviderKey } from '@map-layers/domain';
+import { PolygonIcon, XIcon } from '@phosphor-icons/react';
 import type { MapRef } from 'react-map-gl';
 import { IsochroneDialog } from '@/components/isochrone/IsochroneDialog';
 import { SidebarToggleButton } from '@/components/sidebar/SidebarToggleButton';
