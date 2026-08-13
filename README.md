@@ -1,6 +1,6 @@
-# Map Layers
+# Ambit
 
-Solo, local-first layered map of places. Search Google Places, organize them in nested Figma-like layers, show/hide layers, and color pins by layer.
+Solo, local-first layered map of places. Search Google Places, organize them in nested Figma-like layers, show/hide layers, color pins by layer, and draw walk/bike/drive isochrones.
 
 ## Setup
 

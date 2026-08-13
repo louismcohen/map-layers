@@ -1,4 +1,4 @@
-# Map Layers — System, Architecture & UI Design
+# Ambit — System, Architecture & UI Design
 
 ## Status
 
@@ -12,7 +12,7 @@
 
 ## Product summary
 
-A solo, local-first web app: full-bleed Mapbox map with a left **floating** shadcn sidebar (search + layers). Users search for places, add one/many/all results into nested layers (or the top of the tree), then show/hide layers and assign a layer color that drives all pins under that layer.
+**Ambit** is a solo, local-first web app: full-bleed Mapbox map with a left **floating** shadcn sidebar (search + layers). Users search for places, add one/many/all results into nested layers (or the top of the tree), then show/hide layers and assign a layer color that drives all pins under that layer. Isochrones (time and distance) show the walk/bike/drive ambit around a place.
 
 **Out of scope (v1):** accounts, sync, import/export, multiplayer.
 
@@ -55,9 +55,11 @@ Map tiles, camera padding, and isochrones stay on Mapbox. [`mapboxSearch.ts`](..
 
 ## Monorepo layout
 
+Repo and npm packages stay `map-layers` / `@map-layers/*`; IndexedDB key stays `map-layers:v1`. The product name is **Ambit**.
+
 ```
 map-layers/
-  apps/web/                 # Vite React app (the product)
+  apps/web/                 # Vite React app (Ambit)
   packages/
     domain/                 # pure TS: tree model, selectors, mutations (no React)
     tsconfig/               # shared TS configs
