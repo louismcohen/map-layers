@@ -3,7 +3,7 @@ name: Supabase multi-user persist
 overview: Replace IndexedDB with Supabase Auth and relational Postgres. The browser talks to PostgREST with the user's JWT; RLS is the security boundary. A mapper converts table rows to the in-memory domain Document (and back). Zustand stays as UI + working copy, without persist middleware.
 todos:
     - id: supabase-schema
-      content: Migrations + RLS; 3-letter id prefixes (wsp/lyr/plc/iso) with CHECK constraints
+      content: migration new + explicit GRANTs + RLS ((select auth.uid()), TO authenticated, WITH CHECK) + FK indexes; 3-letter id prefixes with CHECKs
       status: pending
     - id: auth-ui
       content: Supabase client (publishable key), magic-link login, getClaims gate, sidebar logout
@@ -52,7 +52,7 @@ The old Architecture name “document” meant the whole map project (Figma-styl
 
 Drop Zustand **persist / idb-keyval**. After each domain mutation, debounce a sync to Postgres. Load on sign-in. Logout clears local state and **does not write**.
 
-No `authStore`. Session lives in supabase-js (`useAuth`). The filename stays `documentStore` because the domain type is still `Document`; we are not wrapping a JSON blob anymore.
+No `authStore`. Session lives in supabase-js (`useAuth`). Gate the app with **`getClaims()`** (JWKS; default for new projects) — not `getSession().user`. Use `getUser()` only when you need a fresh Auth user row; `getSession()` is raw tokens only. The filename stays `documentStore` because the domain type is still `Document`; we are not wrapping a JSON blob anymore.
 
 ## Transform: DB rows ↔ domain (not `documentDb`)
 
@@ -60,7 +60,7 @@ No generic “document database” module. A **`lib/workspace/`** cluster next t
 
 **Load (PostgREST → domain)**
 
-1. `workspaces` row for `auth.uid()` (create empty workspace if none)
+1. `workspaces` row for the signed-in user (`ensureWorkspace` upsert-on-conflict)
 2. `select` `layers`, `places`, `isochrones`, `tree_nodes` where `workspace_id = …`
 3. `rowsToDocument`:
     - each layer/place/isochrone row → `DocNode` (`lng`/`lat` → `coordinates`, `source_provider`/`provider_id` → `sourceProvider`/`providerId`, `origin_place_id` → `originPlaceId`)
@@ -79,31 +79,63 @@ The UI never thinks in SQL. Domain never imports `supabase-js`. Only `lib/worksp
 
 ## Secure access from the client
 
-The Vite app uses `@supabase/supabase-js` with:
+This app is a **static Vite SPA** (no cookie session, no server loaders). Use **`@supabase/supabase-js` only** — do **not** add `@supabase/ssr` or a `lib/supabase/server.ts`. Official React/Vite quickstart:
+
+```ts
+import { createClient } from '@supabase/supabase-js'
+
+export const supabase = createClient<Database>(
+  import.meta.env.VITE_SUPABASE_URL,
+  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+)
+```
+
+Env:
 
 - `VITE_SUPABASE_URL`
-- `VITE_SUPABASE_ANON_KEY` (publishable) — **this key is public**. Anyone can extract it from the bundle. That is expected.
+- `VITE_SUPABASE_PUBLISHABLE_KEY` — value is `sb_publishable_...` (legacy `anon` JWT still works until disabled end of 2026; prefer publishable). **This key is public.** Anyone can extract it from the bundle. That is expected.
+
+Publishable key with **no session** → Postgres role `anon`. With a signed-in user JWT → role `authenticated`. Same security model as the old anon key, new key type.
+
+**Pin** `@supabase/supabase-js` to an exact version in `package.json` (skill: no floating `^` on supabase packages) and commit the lockfile. Drop any `@supabase/ssr` dependency if present from scaffolding.
 
 What actually protects data:
 
-1. **Sign-in** (magic link) issues a user JWT. `supabase-js` sends `Authorization: Bearer <jwt>` on every table request.
-2. **RLS** on every table: a row is visible/writable only if it belongs to a `workspaces` row where `user_id = auth.uid()`. Anon with no session gets zero rows. User A cannot `select`/`update`/`delete` user B’s layers.
-3. **Grants**: `anon` has no useful table rights (or only `insert` into nothing that RLS allows). `authenticated` has CRUD **subject to RLS**.
-4. **Never** put `service_role` in the web app. That key bypasses RLS.
-5. UPDATE policies require a matching SELECT policy (Postgres RLS).
+1. **Sign-in** (magic link via `signInWithOtp({ email, options: { emailRedirectTo } })`) issues a user JWT. `supabase-js` sends `Authorization: Bearer <jwt>` on every table request.
+2. **RLS** on every table: policies use `TO authenticated` plus ownership `(select auth.uid()) = user_id` (or `EXISTS` on the owning workspace). Never `auth.role() = 'authenticated'` (deprecated; breaks with anonymous sign-ins). Wrap `auth.uid()` in `(select …)` for initPlan caching. Anon with no session gets zero rows. User A cannot `select`/`update`/`delete` user B’s layers.
+3. **Explicit `GRANT`s are required** (Apr 2026 Data API breaking change — new `public` tables are not auto-exposed): `GRANT` CRUD to `authenticated` only; **no useful grants to `anon`**. Missing grant → PostgREST `42501`, not a silent RLS empty set. Treat GRANT + `ENABLE ROW LEVEL SECURITY` + policies as one migration unit.
+4. **Never** put `service_role` / secret keys in the web app. That key bypasses RLS.
+5. UPDATE needs a matching SELECT policy, and UPDATE policies need both `USING` and `WITH CHECK` so a user cannot reassign `user_id` / `workspace_id`.
 
-So “securely accessing Supabase from the client” means: **public anon key + user JWT + RLS**, not a hidden server connection string.
+So “securely accessing Supabase from the client” means: **public publishable key + user JWT + explicit GRANTs + RLS**, not a hidden server connection string.
 
 Mapbox/Google keys stay `VITE_*` for this slice (restrict by HTTP referrer). They are unrelated to Postgres.
 
+### Auth session APIs + magic link (SPA)
+
+- **`getClaims()`** — verify identity / gate `AuthGate` (JWKS). Do not trust `getSession().user` for authorization.
+- **`getUser()`** — network round-trip when you need a fresh Auth user row.
+- **`getSession()`** — raw tokens only.
+- **`onAuthStateChange`** — subscription for sign-in/out.
+
+PKCE: `auth.flowType: 'pkce'` and `detectSessionInUrl: true` (supabase-js defaults already do this for browser SPAs). Configure **Site URL** + **Redirect URLs** (`http://localhost:5173`, production origin) in the dashboard / `supabase/config.toml`. Pass `emailRedirectTo` from `signInWithOtp`.
+
+Do **not** copy the Next.js / passwordless-docs `token_hash` email template (`/auth/confirm?token_hash=...`) — that is for **server** confirm routes. Leave the default Magic Link template (`{{ .ConfirmationURL }}`). Auth verifies, then redirects to Site URL with `?code=`; the client exchanges it.
+
 ## Schema (one workspace per user)
 
-`workspaces`: `id`, `user_id` unique → `auth.users`, `default_place_color`, `updated_at`
+Create migrations with **`supabase migration new <name>`** — never invent `<timestamp>_init.sql` filenames by hand.
+
+`workspaces`: `id`, `user_id` unique → `auth.users(id)` **ON DELETE CASCADE** (PK only — do not rely on other `auth` unique indexes), `default_place_color`, `updated_at`
 
 - `layers`: `id`, `workspace_id`, `name`, `visible`, `color`, `maki`, `collapsed`
 - `places`: `id`, `workspace_id`, `name`, `source_provider` (`google`|`mapbox`), `provider_id`, `lng`, `lat`, `address`, `feature_type`, `maki`, `visible` — unique `(workspace_id, source_provider, provider_id)`
 - `isochrones`: `id`, `workspace_id`, `name`, `center_lng`, `center_lat`, `profile`, `metric`, `contours` jsonb, `geojson` jsonb, `color`, `visible`, `origin_place_id` nullable FK → `places(id)` on delete cascade
-- `tree_nodes`: `workspace_id`, `node_id`, `kind`, `parent_id` nullable, `sort_index` — mixed sibling order
+- `tree_nodes`: composite PK `(workspace_id, node_id)`, `kind`, `parent_id` nullable, `sort_index` — mixed sibling order
+
+**Indexes (required):** Postgres does not auto-index FKs. Index `workspaces.user_id`, every `workspace_id` column, and `isochrones.origin_place_id`.
+
+JSONB `contours` / `geojson`: store/load whole documents; no GIN unless we query inside JSON.
 
 `tree_nodes.node_id` is polymorphic (`kind` says layer / place / isochrone). `parent_id` is null at root, otherwise a layer id.
 
@@ -177,11 +209,25 @@ erDiagram
   }
 ```
 
-First login: insert an empty `workspaces` row (no tree rows).
+First login: `ensureWorkspace` inserts an empty `workspaces` row (no tree rows) via unique `user_id` + `INSERT … ON CONFLICT (user_id) DO NOTHING` (avoid SELECT-then-INSERT race). Prefer client `ensureWorkspace` over a `SECURITY DEFINER` helper in `public`. If a trigger is added later: private schema, `set search_path = ''`, `auth.uid()` in the body, revoke `EXECUTE` from `anon`/`authenticated`.
+
+### RLS policy shape (required)
+
+`workspaces` (example SELECT/ALL pattern):
+
+```sql
+to authenticated
+using ( (select auth.uid()) = user_id )
+with check ( (select auth.uid()) = user_id )  -- INSERT/UPDATE
+```
+
+Child tables (`layers`, `places`, `isochrones`, `tree_nodes`): `EXISTS` on `workspaces` where `user_id = (select auth.uid())` — same `(select …)` wrap; UPDATE/INSERT policies include matching `WITH CHECK`.
+
+After schema: run `supabase db advisors` (or MCP `get_advisors`).
 
 ## IDs
 
-The **client** generates ids in [`createId`](packages/domain/src/document.ts): `` `${prefix}_${crypto.randomUUID()}` ``. Postgres does not assign them; it CHECKs the prefix. The mapper never mints a second id. (`auth.users.id` is still created by Supabase Auth.)
+The **client** generates ids in [`createId`](packages/domain/src/document.ts): `` `${prefix}_${crypto.randomUUID()}` ``. Postgres does not assign them; it CHECKs the prefix. The mapper never mints a second id. (`auth.users.id` is still created by Supabase Auth.) Client `prefix_${uuid v4}` text PKs are a product choice for domain `createId`; random UUIDs fragment indexes — acceptable at this app’s scale, not the skill’s default (`identity` / UUIDv7).
 
 - `wsp_` — workspaces (once, on first login, before insert)
 - `lyr_` — layers (on create)
@@ -230,7 +276,7 @@ flowchart TB
 ```
 apps/web/src/
   lib/
-    supabase.ts                         # browser client (anon key, PKCE)
+    supabase.ts                         # browser singleton (publishable key, PKCE defaults)
     database.types.ts                   # generated PostgREST types
     workspace/
       types.ts                          # row DTOs used by mapper (thin wrappers over generated)
@@ -239,37 +285,37 @@ apps/web/src/
       api.ts                            # loadWorkspace / saveWorkspace / ensureWorkspace
       index.ts                          # re-export load/save only
   hooks/
-    useAuth.ts                          # session, magic-link, signOut, onAuthStateChange
+    useAuth.ts                          # getClaims gate, magic-link, signOut, onAuthStateChange
     useWorkspaceSync.ts                 # hydrate on sign-in; debounce save; skip on logout
   components/
     auth/
-      AuthGate.tsx                      # no session → LoginScreen; loading → existing spinner
+      AuthGate.tsx                      # no claims → LoginScreen; loading → existing spinner
       LoginScreen.tsx                   # email + magic link
       AccountMenu.tsx                   # sidebar email + logout
 ```
 
-- [`lib/supabase.ts`](apps/web/src/lib/supabase.ts) — `supabase` singleton via `createClient<Database>(VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY)` with `auth.flowType: 'pkce'`, `detectSessionInUrl: true`. Session JWT stays in supabase-js storage (not Zustand). Never `service_role`.
-- [`lib/database.types.ts`](apps/web/src/lib/database.types.ts) — output of `supabase gen types typescript`. Commit it. Mapper/api import `Tables<'layers'>` etc. from here.
+- [`lib/supabase.ts`](apps/web/src/lib/supabase.ts) — browser singleton via `createClient<Database>(VITE_SUPABASE_URL, VITE_SUPABASE_PUBLISHABLE_KEY)` from `@supabase/supabase-js` (not `@supabase/ssr`). PKCE + `detectSessionInUrl` are browser defaults; set explicitly if needed. Session JWT stays in supabase-js storage (not Zustand). Never `service_role`. No `lib/supabase/server.ts`.
+- [`lib/database.types.ts`](apps/web/src/lib/database.types.ts) — output of `supabase gen types --lang typescript --local > apps/web/src/lib/database.types.ts` (or remote equivalent). Commit it. Pass `createClient<Database>(…)`. Mapper/api import `Tables<'layers'>` etc. from here.
 - [`lib/workspace/types.ts`](apps/web/src/lib/workspace/types.ts) — `WorkspaceSnapshot` (`workspace` + `layers` + `places` + `isochrones` + `tree_nodes`). Optional camelCase aliases if generated names are too noisy.
 - [`lib/workspace/mapper.ts`](apps/web/src/lib/workspace/mapper.ts) — `rowsToDocument(snapshot) → Document`; `documentToRows(doc, workspaceId) → snapshot`. Column map: `lng`/`lat` ↔ `coordinates`; `source_provider`/`provider_id` ↔ `sourceProvider`/`providerId`; `origin_place_id` ↔ `originPlaceId`. `tree_nodes` ordered by `parent_id`, `sort_index` → `rootChildren` / layer `children`. Does **not** mint ids. Does **not** import `supabase-js`.
-- [`lib/workspace/api.ts`](apps/web/src/lib/workspace/api.ts) — `ensureWorkspace()` — select by `auth.uid()`, else insert `{ id: createId('wsp'), user_id }` with empty tree. `loadWorkspace()` — fetch four child tables, `rowsToDocument`. `saveWorkspace(doc, workspaceId)` — `documentToRows`, upsert by `id`, delete missing ids, **abort if delete set would wipe a non-empty workspace**. Update `workspaces.updated_at`.
+- [`lib/workspace/api.ts`](apps/web/src/lib/workspace/api.ts) — `ensureWorkspace()` — `INSERT … ON CONFLICT (user_id) DO NOTHING` then select by `(select auth.uid())` equivalent on the client (`user.id` from claims/session); mint `{ id: createId('wsp'), user_id }` with empty tree. `loadWorkspace()` — fetch four child tables, `rowsToDocument`. `saveWorkspace(doc, workspaceId)` — `documentToRows`, **batch** upserts by `id` (not per-row round trips), delete missing ids, **abort if delete set would wipe a non-empty workspace**. Update `workspaces.updated_at`.
 - [`lib/workspace/index.ts`](apps/web/src/lib/workspace/index.ts) — public seam: `loadWorkspace`, `saveWorkspace`, `ensureWorkspace`. Store/hooks import this, not table names.
-- [`hooks/useAuth.ts`](apps/web/src/hooks/useAuth.ts) — `session`, `user`, `loading`; `signInWithOtp(email)`; `signOut()`; subscribe `onAuthStateChange`.
+- [`hooks/useAuth.ts`](apps/web/src/hooks/useAuth.ts) — `claims` / loading from `getClaims()`; `signInWithOtp({ email, options: { emailRedirectTo } })`; `signOut()`; subscribe `onAuthStateChange`. Do not authorize from `getSession().user`.
 - [`hooks/useWorkspaceSync.ts`](apps/web/src/hooks/useWorkspaceSync.ts) — on `SIGNED_IN`: `loadWorkspace` → `hydrateDocument`. Subscribe to `document` (not UI ephemera); debounce flush → `saveWorkspace`. On `SIGNED_OUT`: cancel timer, `resetLocal()`, **do not write**.
-- [`components/auth/AuthGate.tsx`](apps/web/src/components/auth/AuthGate.tsx) — gate around today’s chrome: unauthenticated users never see map/store data.
-- [`components/auth/LoginScreen.tsx`](apps/web/src/components/auth/LoginScreen.tsx) — magic-link form (existing shadcn `Input` / `Button`).
+- [`components/auth/AuthGate.tsx`](apps/web/src/components/auth/AuthGate.tsx) — gate on `getClaims`, around today’s chrome: unauthenticated users never see map/store data.
+- [`components/auth/LoginScreen.tsx`](apps/web/src/components/auth/LoginScreen.tsx) — magic-link form (existing shadcn `Input` / `Button`); default ConfirmationURL template (no `token_hash` server confirm route).
 - [`components/auth/AccountMenu.tsx`](apps/web/src/components/auth/AccountMenu.tsx) — compact email + Log out for the sidebar footer.
 
 ### New files (repo root — not a package)
 
 ```
 supabase/
-  config.toml
+  config.toml                           # Site URL + Redirect URLs for SPA PKCE
   migrations/
-    <timestamp>_init.sql              # tables, CHECKs, FKs, RLS, GRANTs
+    <cli-generated>_….sql               # from `supabase migration new <name>` only
 ```
 
-One migration is enough: `workspaces`, `layers`, `places`, `isochrones`, `tree_nodes`; id prefix CHECKs (`wsp_` / `lyr_` / `plc_` / `iso_`); RLS `user_id = auth.uid()` via workspace ownership; `authenticated` CRUD subject to RLS; `anon` no useful grants.
+Create the init migration with **`supabase migration new init_workspace`** (or similar) — never hand-invent timestamps. One migration is enough for v1: tables, CHECKs, FKs, **FK indexes**, composite PK on `tree_nodes`, **explicit `GRANT`s** to `authenticated`, `ENABLE ROW LEVEL SECURITY`, policies `TO authenticated` with `(select auth.uid())` ownership / `EXISTS` + UPDATE `WITH CHECK`. No useful grants to `anon`.
 
 `.gitignore`: add `.supabase/` (CLI temp). Do not commit secrets.
 
@@ -278,12 +324,14 @@ One migration is enough: `workspaces`, `layers`, `places`, `isochrones`, `tree_n
 - [`apps/web/src/store/documentStore.ts`](apps/web/src/store/documentStore.ts) — drop `persist`, `idb-keyval`, IDB empty-guard, IndexedDB migrate v2–v4. Keep `document` + UI ephemera. Add `workspaceId: string | null`, `hydrateDocument({ document, workspaceId })`, `resetLocal()` (empty doc, clear selection/preview, `hydrated: false`). Mutations stay domain wrappers; they do **not** call PostgREST (`useWorkspaceSync` watches `document`).
 - [`apps/web/src/App.tsx`](apps/web/src/App.tsx) — wrap with `AuthGate`; mount `useWorkspaceSync`; drop `useDocumentStore.persist.onFinishHydration`.
 - [`apps/web/src/components/AppSidebar.tsx`](apps/web/src/components/AppSidebar.tsx) — render `AccountMenu` at the bottom of the floating sidebar (search / layers unchanged).
-- [`apps/web/src/vite-env.d.ts`](apps/web/src/vite-env.d.ts) + [`apps/web/.env.example`](apps/web/.env.example) — `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`.
-- [`apps/web/package.json`](apps/web/package.json) — add `@supabase/supabase-js`; remove `idb-keyval`; add `vitest` for mapper tests (domain already has it).
+- [`apps/web/src/vite-env.d.ts`](apps/web/src/vite-env.d.ts) + [`apps/web/.env.example`](apps/web/.env.example) — `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`.
+- [`apps/web/package.json`](apps/web/package.json) — add **pinned** `@supabase/supabase-js` (exact version, no `^`); remove `idb-keyval` and any `@supabase/ssr`; add `vitest` for mapper tests (domain already has it).
 - [`packages/domain/src/document.ts`](packages/domain/src/document.ts) — `createId(prefix: 'wsp' | 'lyr' | 'plc' | 'iso')` (today: `'layer'` / `'place'` / `'isochrone'`).
 - [`packages/domain/src/mutations.ts`](packages/domain/src/mutations.ts) — `createId('lyr'|'plc'|'iso')`. Workspace id is minted only in `ensureWorkspace`.
 - [`packages/domain/src/index.ts`](packages/domain/src/index.ts) + [`domain.test.ts`](packages/domain/src/domain.test.ts) — export prefix type; assert prefixes.
-- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) + [`README.md`](README.md) — Zustand = working copy; mapper = I/O seam; IndexedDB gone; env names only.
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) + [`README.md`](README.md) — Zustand = working copy; mapper = I/O seam; IndexedDB gone; env names only (`VITE_SUPABASE_PUBLISHABLE_KEY`).
+
+If scaffolding left `apps/web/src/lib/supabase/client.ts` + `server.ts` from the SSR template, replace with the single browser `lib/supabase.ts` and delete the SSR split.
 
 Leave IndexedDB migrate helpers in domain (`migratePlaceVisibility`, etc.) unused by the store; Postgres is a fresh schema, not a blob migrate.
 
@@ -317,7 +365,7 @@ Static Vite build (Vercel or Cloudflare Pages) with the four `VITE_*` vars. Rest
 
 ## Architecture
 
-Update [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md): Zustand is the working copy; Postgres is source of truth; mapper is the I/O boundary (so a later BFF is an adapter swap); RLS + JWT; IndexedDB removed; import/export, realtime, multi-document deferred.
+Update [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md): Zustand is the working copy; Postgres is source of truth; mapper is the I/O boundary (so a later BFF is an adapter swap); publishable key + JWT + explicit GRANTs + RLS; IndexedDB removed; import/export, realtime, multi-document deferred.
 
 ## When a backend is actually needed
 
