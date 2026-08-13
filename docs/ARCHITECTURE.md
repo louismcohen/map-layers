@@ -3,9 +3,9 @@
 ## Status
 
 - Last updated: 2026-08-13
-- Implemented: living docs; monorepo; domain (+ `resolveDropTarget`); Zustand/IndexedDB; Mapbox (LA default + geolocation); layers panel (**combined color + optional Phosphor icon** via `LayerStylePicker` + **react-color** `GithubPicker`; persisted layer `maki` migrated from Maki names → Phosphor catalog); **whole-row** drag reorder; Phosphor icons for caret expand / eye visibility (**layers, places, isochrones**) / **isochrone walk·bike·drive**); **filled** pins: Phosphor catalog name on layer override; else Maki if place `maki` is a Mapbox name; else Phosphor from Google `featureType` (`MapPin` fallback); **Google Places Text Search** (Pro field mask + viewport `locationBias` + **Load more** pagination, ~60-result ceiling; pending-on-type + keep prior results until the new page; **No results** only after a settled empty response) with on-map preview pins (random color reused for new layers; **clear** control on search input); Mapbox Search Box client retained but unused; place identity via `sourceProvider` + `providerId` (dedupe / search selection); **isochrones** (time + distance; walk/bike/drive; user-chosen minutes/miles; create from search-row icon or place `…` menu; place-origin isochrones bind via `originPlaceId` — UI-nested under the place, move/delete locked, short names, **map-hidden when the origin place is hidden** without flipping the isochrone’s own `visible`; GeoJSON `Source`/`Layer`; **map-click select** via fill `queryRenderedFeatures`, overlaps pick **smallest area** and paint **largest→smallest** so small rings sit on top; provider-isolated Mapbox client with **denoise + generalize + Turf polygonSmooth**); fit bounds (places/layers only); modals/toasts; UI orchestration hooks (`usePlaceSearch`, `useIsochroneCreate`, `useFlyToUserOnce`, `useMapSidebarPadding`) + shared `mapCamera` helpers; **shadcn/ui (base-rhea / taupe, always light)** chrome — **floating `Sidebar`** (`AppSidebar`: search + layers) over full-bleed map; desktop sidebar **resizable** (280–520px, default 360, `localStorage`); Mapbox **left padding** tracks live `--sidebar-width` so the visual center is the clear map strip (`setPadding` while dragging, `easeTo` on collapse/expand), cleared when the sidebar collapses / on mobile
+- Implemented: living docs; monorepo; domain (+ `resolveDropTarget`); Zustand/IndexedDB; Mapbox (LA default + geolocation); layers panel (**combined color + optional Phosphor icon** via `LayerStylePicker` + **react-color** `GithubPicker`; persisted layer `maki` migrated from Maki names → Phosphor catalog); **whole-row** drag reorder; Phosphor icons for caret expand / eye visibility (**layers, places, isochrones**) / **isochrone walk·bike·drive**); **filled** pins: Phosphor catalog name on layer override; else Maki if place `maki` is a Mapbox name; else Phosphor from Google `featureType` (`MapPin` fallback); **Google Places Text Search** (Pro field mask + viewport `locationBias` + **Load more** pagination, ~60-result ceiling; pending-on-type + keep prior results until the new page; **No results** only after a settled empty response) with on-map preview pins (random color reused for new layers; **clear** control on search input); Mapbox Search Box client retained but unused; place identity via `sourceProvider` + `providerId` (dedupe / search selection); **isochrones** (time + distance; walk/bike/drive; user-chosen minutes/miles; create from search-row icon or place `…` menu; place-origin isochrones bind via `originPlaceId` — UI-nested under the place, move/delete locked, short names, **map-hidden when the origin place is hidden** without flipping the isochrone’s own `visible`; GeoJSON `Source`/`Layer`; **map-click select** via fill `queryRenderedFeatures`, overlaps pick **smallest area** and paint **largest→smallest** so small rings sit on top; provider-isolated Mapbox client with **denoise + generalize + Turf polygonSmooth**); fit bounds (places/layers only); modals/toasts; UI orchestration hooks (`usePlaceSearch`, `useIsochroneCreate`, `useFlyToUserOnce`, `useMapSidebarPadding`) + shared `mapCamera` helpers; **shadcn/ui (base-rhea / taupe, always light)** chrome — **floating `Sidebar`** (`AppSidebar`: search + layers) over full-bleed map; desktop sidebar **resizable** (280–520px, default 360, `localStorage`); Mapbox **left padding** tracks live `--sidebar-width` so the visual center is the clear map strip (`setPadding` while dragging, `easeTo` on collapse/expand), cleared when the sidebar collapses / on mobile; **Supabase workspace schema** (`supabase/migrations/*_init_workspace.sql`: `workspaces` / `layers` / `places` / `isochrones` / `tree_nodes`, prefix CHECKs, FK indexes, explicit `GRANT` to `authenticated`, RLS with `(select auth.uid())` + `WITH CHECK`)
 - In progress: none
-- Next: Supabase Auth + relational persist (see plan); optional polish (layer opacity, clustering)
+- Next: Supabase Auth + client persist (mapper / `documentStore` / magic link); optional polish (layer opacity, clustering)
 - Deferred: see [Explicitly deferred](#explicitly-deferred)
 
 ---
@@ -63,6 +63,9 @@ map-layers/
   packages/
     domain/                 # pure TS: tree model, selectors, mutations (no React)
     tsconfig/               # shared TS configs
+  supabase/
+    config.toml             # local CLI + Auth Site URL / Redirect URLs (Vite :5173)
+    migrations/             # imperative SQL (workspace tables + RLS)
   docs/
     ARCHITECTURE.md         # this file — primary living app doc
   AGENTS.md
@@ -76,6 +79,11 @@ map-layers/
 
 - **`packages/domain`**: tree operations, effective visibility/color, DnD drop resolution, IDs — unit-testable without the UI.
 - **`apps/web`**: Mapbox UI, Zustand store wiring, search client, pin components adapted from yelp-combinator.
+- **`supabase/`**: Postgres schema for upcoming Auth + relational persist (app still on IndexedDB until client wiring lands).
+
+### Postgres workspace schema (migrations)
+
+One **workspace** row per user (`user_id` → `auth.users`, unique). Child tables: `layers`, `places`, `isochrones`, `tree_nodes` (composite PK `(workspace_id, node_id)` for mixed sibling order). Client-minted text PKs with prefix CHECKs: `wsp_`, `lyr_`, `plc_`, `iso_`. FK indexes on `workspace_id` / `origin_place_id`. Data API: **explicit `GRANT` CRUD to `authenticated` only** (no useful `anon` grants) + RLS on every table — ownership `(select auth.uid()) = user_id` on `workspaces`, `EXISTS` workspace ownership on children; UPDATE policies include `WITH CHECK`.
 
 ### App layering (`apps/web`)
 

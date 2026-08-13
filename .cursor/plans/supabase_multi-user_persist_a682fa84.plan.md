@@ -4,7 +4,7 @@ overview: Replace IndexedDB with Supabase Auth and relational Postgres. The brow
 todos:
     - id: supabase-schema
       content: migration new + explicit GRANTs + RLS ((select auth.uid()), TO authenticated, WITH CHECK) + FK indexes; 3-letter id prefixes with CHECKs
-      status: pending
+      status: completed
     - id: auth-ui
       content: Supabase client (publishable key), magic-link login, getClaims gate, sidebar logout
       status: pending
@@ -82,12 +82,12 @@ The UI never thinks in SQL. Domain never imports `supabase-js`. Only `lib/worksp
 This app is a **static Vite SPA** (no cookie session, no server loaders). Use **`@supabase/supabase-js` only** — do **not** add `@supabase/ssr` or a `lib/supabase/server.ts`. Official React/Vite quickstart:
 
 ```ts
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from '@supabase/supabase-js';
 
 export const supabase = createClient<Database>(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-)
+    import.meta.env.VITE_SUPABASE_URL,
+    import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+);
 ```
 
 Env:

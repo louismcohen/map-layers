@@ -5,3 +5,4 @@ dist
 .DS_Store
 apps/web/.env
 apps/web/.env.local
+.supabase/
