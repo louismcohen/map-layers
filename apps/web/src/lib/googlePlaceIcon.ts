@@ -667,6 +667,7 @@ export function resolveStoredLayerIcon(stored: string): PlaceIconName {
 
 /** Rewrite layer `maki` values from Maki names to Phosphor catalog names. */
 export function migrateDocumentLayerIcons(doc: Document): Document {
+	if (!doc?.nodes) return doc
 	let changed = false
 	const nodes = { ...doc.nodes }
 	for (const [id, node] of Object.entries(nodes)) {

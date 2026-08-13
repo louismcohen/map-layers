@@ -1,4 +1,4 @@
-export { createEmptyDocument, createId } from './document'
+export { createEmptyDocument, createId, migratePlaceVisibility } from './document'
 export type {
 	AddIsochroneInput,
 	AddPlacesInput,
@@ -22,7 +22,9 @@ export {
 	setLayerColor,
 	setLayerMaki,
 	setLayerVisible,
+	setPlaceVisible,
 	toggleLayerVisible,
+	togglePlaceVisible,
 	ungroupLayer,
 } from './mutations'
 export type { DropTarget } from './resolveDropTarget'

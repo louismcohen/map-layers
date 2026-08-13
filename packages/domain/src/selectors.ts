@@ -52,7 +52,14 @@ export function isEffectivelyVisible(doc: Document, id: NodeId): boolean {
 	if (!node) return false
 
 	if (node.kind === 'layer' && !node.visible) return false
-	if (node.kind === 'isochrone' && !node.visible) return false
+	if (node.kind === 'place' && node.visible === false) return false
+	if (node.kind === 'isochrone') {
+		if (!node.visible) return false
+		if (node.originPlaceId) {
+			const origin = getPlace(doc, node.originPlaceId)
+			if (origin && origin.visible === false) return false
+		}
+	}
 
 	for (const ancestorId of getAncestorLayerIds(doc, id)) {
 		const ancestor = getLayer(doc, ancestorId)

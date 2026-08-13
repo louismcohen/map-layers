@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createEmptyDocument } from './document'
+import { createEmptyDocument, migratePlaceVisibility } from './document'
 import {
 	addIsochrone,
 	addPlaces,
@@ -13,6 +13,7 @@ import {
 	setLayerColor,
 	setLayerMaki,
 	setLayerVisible,
+	setPlaceVisible,
 	ungroupLayer,
 } from './mutations'
 import { isochroneArea, pickSmallestIsochroneId } from './isochroneArea'
@@ -569,5 +570,96 @@ describe('domain tree', () => {
 			),
 		).toBe('walk')
 		expect(pickSmallestIsochroneId(['missing'], new Map([['walk', 1]]))).toBeNull()
+	})
+
+	it('hides attached isochrones when the origin place is hidden, without changing iso visible', () => {
+		let doc = createEmptyDocument()
+		const places = addPlaces(doc, {
+			places: [
+				{
+					name: 'Cafe',
+					mapboxId: 'poi.cafe',
+					coordinates: { lng: -122, lat: 37 },
+				},
+			],
+		})
+		doc = places.doc
+		const placeId = places.addedIds[0]
+		if (!placeId) throw new Error('missing place')
+
+		const attached = addIsochrone(doc, {
+			draft: {
+				name: '15 min walk',
+				center: { lng: -122, lat: 37 },
+				profile: 'walking',
+				metric: 'time',
+				contours: [15],
+				geojson: emptyGeojson,
+				color: '#da2007',
+				visible: true,
+				originPlaceId: placeId,
+			},
+		})
+		doc = attached.doc
+
+		const standalone = addIsochrone(doc, {
+			draft: {
+				name: '10 min bike',
+				center: { lng: -122, lat: 37 },
+				profile: 'cycling',
+				metric: 'time',
+				contours: [10],
+				geojson: emptyGeojson,
+				color: '#ec9916',
+				visible: true,
+			},
+		})
+		doc = standalone.doc
+
+		expect(isEffectivelyVisible(doc, placeId)).toBe(true)
+		expect(isEffectivelyVisible(doc, attached.id)).toBe(true)
+		expect(isEffectivelyVisible(doc, standalone.id)).toBe(true)
+
+		doc = setPlaceVisible(doc, placeId, false)
+		expect(isEffectivelyVisible(doc, placeId)).toBe(false)
+		expect(isEffectivelyVisible(doc, attached.id)).toBe(false)
+		expect(isEffectivelyVisible(doc, standalone.id)).toBe(true)
+		expect(doc.nodes[attached.id]).toMatchObject({ visible: true })
+		expect(listVisiblePlaces(doc)).toHaveLength(0)
+		expect(listVisibleIsochrones(doc).map((item) => item.isochrone.id)).toEqual([
+			standalone.id,
+		])
+
+		doc = setIsochroneVisible(doc, attached.id, false)
+		doc = setPlaceVisible(doc, placeId, true)
+		expect(isEffectivelyVisible(doc, placeId)).toBe(true)
+		expect(isEffectivelyVisible(doc, attached.id)).toBe(false)
+		expect(doc.nodes[attached.id]).toMatchObject({ visible: false })
+	})
+
+	it('migrates missing place visible to true', () => {
+		let doc = createEmptyDocument()
+		const added = addPlaces(doc, {
+			places: [
+				{
+					name: 'Cafe',
+					mapboxId: 'poi.cafe',
+					coordinates: { lng: -122, lat: 37 },
+				},
+			],
+		})
+		doc = added.doc
+		const placeId = added.addedIds[0]
+		if (!placeId) throw new Error('missing place')
+
+		const nodes = { ...doc.nodes }
+		const place = { ...nodes[placeId] } as { visible?: boolean }
+		delete place.visible
+		nodes[placeId] = place as (typeof nodes)[string]
+		const legacy = { ...doc, nodes }
+
+		expect(isEffectivelyVisible(legacy, placeId)).toBe(true)
+		const migrated = migratePlaceVisibility(legacy)
+		expect(migrated.nodes[placeId]).toMatchObject({ visible: true })
 	})
 })

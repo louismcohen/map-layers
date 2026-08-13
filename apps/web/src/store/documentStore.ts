@@ -13,8 +13,10 @@ import {
 	setLayerColor as domainSetLayerColor,
 	setLayerMaki as domainSetLayerMaki,
 	setLayerVisible as domainSetLayerVisible,
+	setPlaceVisible as domainSetPlaceVisible,
 	ungroupLayer as domainUngroupLayer,
 	type IsochroneDraft,
+	migratePlaceVisibility,
 	type NodeId,
 	type PlaceDraft,
 } from '@map-layers/domain'
@@ -26,12 +28,44 @@ import { migrateDocumentLayerIcons } from '@/lib/googlePlaceIcon'
 
 const IDB_KEY = 'map-layers:v1'
 
+function isPersistedDocumentEmpty(value: string): boolean {
+	try {
+		const parsed = JSON.parse(value) as { state?: { document?: Document } }
+		const doc = parsed.state?.document
+		if (!doc || typeof doc !== 'object') return true
+		const nodeCount = doc.nodes ? Object.keys(doc.nodes).length : 0
+		return nodeCount === 0 && (doc.rootChildren?.length ?? 0) === 0
+	} catch {
+		return false
+	}
+}
+
+function extractPersistedDocument(persisted: unknown): Document | undefined {
+	if (!persisted || typeof persisted !== 'object') return undefined
+	const record = persisted as Record<string, unknown>
+	const nested = record.document
+	if (nested && typeof nested === 'object' && 'nodes' in nested) {
+		return nested as Document
+	}
+	if ('nodes' in record) return persisted as Document
+	return undefined
+}
+
 const idbStorage = {
 	getItem: async (name: string): Promise<string | null> => {
 		const value = await get<string>(name)
 		return value ?? null
 	},
 	setItem: async (name: string, value: string): Promise<void> => {
+		if (isPersistedDocumentEmpty(value)) {
+			const existing = await get<string>(name)
+			if (existing && !isPersistedDocumentEmpty(existing)) {
+				console.warn(
+					'[map-layers] Refusing to persist an empty document over existing layers',
+				)
+				return
+			}
+		}
 		await set(name, value)
 	},
 	removeItem: async (name: string): Promise<void> => {
@@ -70,6 +104,7 @@ type DocumentStore = {
 	setLayerColor: (id: NodeId, color: string) => void
 	setLayerMaki: (id: NodeId, maki: string | undefined) => void
 	setLayerCollapsed: (id: NodeId, collapsed: boolean) => void
+	togglePlaceVisible: (id: NodeId) => void
 	toggleIsochroneVisible: (id: NodeId) => void
 	setIsochroneColor: (id: NodeId, color: string) => void
 	ungroupLayer: (id: NodeId) => void
@@ -151,6 +186,17 @@ export const useDocumentStore = create<DocumentStore>()(
 			},
 			setLayerCollapsed: (id, collapsed) => {
 				setState({ document: domainSetLayerCollapsed(getState().document, id, collapsed) })
+			},
+			togglePlaceVisible: (id) => {
+				const node = getState().document.nodes[id]
+				if (node?.kind !== 'place') return
+				setState({
+					document: domainSetPlaceVisible(
+						getState().document,
+						id,
+						node.visible === false,
+					),
+				})
 			},
 			toggleIsochroneVisible: (id) => {
 				const node = getState().document.nodes[id]
@@ -254,19 +300,33 @@ export const useDocumentStore = create<DocumentStore>()(
 			name: IDB_KEY,
 			storage: createJSONStorage(() => idbStorage),
 			partialize: (state) => ({ document: state.document }),
-			version: 2,
+			version: 3,
 			migrate: (persisted, version) => {
-				const state = persisted as { document: Document }
-				if (version < 2) {
-					return { document: migrateDocumentLayerIcons(state.document) }
+				const document = extractPersistedDocument(persisted)
+				if (!document) return persisted as { document: Document }
+				let next = document
+				try {
+					if (version < 2) next = migrateDocumentLayerIcons(next)
+					if (version < 3) next = migratePlaceVisibility(next)
+				} catch (error) {
+					console.warn('[map-layers] persist migrate failed; keeping stored document', error)
+					next = document
 				}
-				return state
+				return { document: next }
 			},
-			onRehydrateStorage: () => (state) => {
-				if (state) {
-					state.document = migrateDocumentLayerIcons(state.document)
-					state.setHydrated(true)
+			onRehydrateStorage: () => (state, error) => {
+				if (error) {
+					console.warn('[map-layers] persist rehydrate failed', error)
 				}
+				if (!state?.document?.nodes) return
+				try {
+					state.document = migratePlaceVisibility(
+						migrateDocumentLayerIcons(state.document),
+					)
+				} catch (migrateError) {
+					console.warn('[map-layers] document migrate failed', migrateError)
+				}
+				state.setHydrated(true)
 			},
 		},
 	),

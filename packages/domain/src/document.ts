@@ -8,6 +8,21 @@ export function createEmptyDocument(): Document {
 	}
 }
 
+/** Default missing place `visible` (pre-toggle persist) to true. */
+export function migratePlaceVisibility(doc: Document): Document {
+	if (!doc?.nodes) return doc
+	let changed = false
+	const nodes = { ...doc.nodes }
+	for (const [id, node] of Object.entries(nodes)) {
+		if (node.kind !== 'place') continue
+		const visible = (node as { visible?: boolean }).visible
+		if (typeof visible === 'boolean') continue
+		changed = true
+		nodes[id] = { ...node, visible: true }
+	}
+	return changed ? { ...doc, nodes } : doc
+}
+
 export function createId(prefix = 'n'): string {
 	if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
 		return `${prefix}_${crypto.randomUUID()}`

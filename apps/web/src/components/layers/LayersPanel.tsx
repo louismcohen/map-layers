@@ -43,6 +43,7 @@ export function LayersPanel({ mapRef }: LayersPanelProps) {
 	const setLayerColor = useDocumentStore((s) => s.setLayerColor)
 	const setLayerMaki = useDocumentStore((s) => s.setLayerMaki)
 	const setLayerCollapsed = useDocumentStore((s) => s.setLayerCollapsed)
+	const togglePlaceVisible = useDocumentStore((s) => s.togglePlaceVisible)
 	const toggleIsochroneVisible = useDocumentStore((s) => s.toggleIsochroneVisible)
 	const setIsochroneColor = useDocumentStore((s) => s.setIsochroneColor)
 	const ungroupLayer = useDocumentStore((s) => s.ungroupLayer)
@@ -143,6 +144,8 @@ export function LayersPanel({ mapRef }: LayersPanelProps) {
 											}}
 											onToggleVisible={() => {
 												if (row.node.kind === 'layer') toggleLayerVisible(row.id)
+												else if (row.node.kind === 'place')
+													togglePlaceVisible(row.id)
 												else if (row.node.kind === 'isochrone')
 													toggleIsochroneVisible(row.id)
 											}}

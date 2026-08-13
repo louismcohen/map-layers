@@ -11,6 +11,8 @@ export type PlaceNode = {
 	/** Mapbox Maki icon name from Search Box (e.g. restaurant, cafe). */
 	maki?: string
 	raw?: unknown
+	/** Own toggle; effective visibility still ANDs ancestor layers. */
+	visible: boolean
 }
 
 export type IsochroneProfile = 'walking' | 'cycling' | 'driving'
@@ -72,7 +74,7 @@ export type Document = {
 	defaultPlaceColor: string
 }
 
-export type PlaceDraft = Omit<PlaceNode, 'id' | 'kind'>
+export type PlaceDraft = Omit<PlaceNode, 'id' | 'kind' | 'visible'>
 
 export type IsochroneDraft = Omit<IsochroneNode, 'id' | 'kind'>
 

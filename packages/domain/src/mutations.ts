@@ -137,6 +137,20 @@ export function toggleLayerVisible(doc: Document, id: NodeId): Document {
 	return setLayerVisible(doc, id, !layer.visible)
 }
 
+export function setPlaceVisible(doc: Document, id: NodeId, visible: boolean): Document {
+	const next = cloneDoc(doc)
+	const place = getPlace(next, id)
+	if (!place) throw new Error(`Place not found: ${id}`)
+	place.visible = visible
+	return next
+}
+
+export function togglePlaceVisible(doc: Document, id: NodeId): Document {
+	const place = getPlace(doc, id)
+	if (!place) throw new Error(`Place not found: ${id}`)
+	return setPlaceVisible(doc, id, !place.visible)
+}
+
 export function setLayerColor(doc: Document, id: NodeId, color: string): Document {
 	const next = cloneDoc(doc)
 	const layer = getLayer(next, id)
@@ -305,6 +319,7 @@ export function addPlaces(doc: Document, input: AddPlacesInput): AddPlacesResult
 			featureType: draft.featureType,
 			maki: draft.maki,
 			raw: draft.raw,
+			visible: true,
 		}
 		next.nodes[id] = place
 		list.splice(index, 0, id)
