@@ -6,7 +6,7 @@ todos:
       content: Migrations + RLS; 3-letter id prefixes (wsp/lyr/plc/iso) with CHECK constraints
       status: pending
     - id: auth-ui
-      content: Supabase client (anon key), magic-link login, session JWT, sidebar logout
+      content: Supabase client (publishable key), magic-link login, getClaims gate, sidebar logout
       status: pending
     - id: replace-idb
       content: Row mapper + hydrate/sync; debounce upserts; never delete-all on empty; logout must not save
@@ -20,6 +20,8 @@ isProject: false
 # Server-backed persist (Supabase, relational)
 
 IndexedDB is not the store. There is also **no custom backend**. The API is Supabase PostgREST over Postgres tables. The browser calls it with the signed-in user's JWT; **RLS** decides what rows exist for that request.
+
+**Docs source of truth:** do not re-learn from model training data. Before implementing, fetch [changelog.md](https://supabase.com/changelog.md) (scan `breaking-change`), look up topics via MCP `search_docs` or docs `.md` URLs, and apply the local Supabase + Postgres best-practices skills. Pin Supabase package versions (no floating `^`).
 
 ```mermaid
 flowchart LR
@@ -50,11 +52,11 @@ The old Architecture name “document” meant the whole map project (Figma-styl
 
 Drop Zustand **persist / idb-keyval**. After each domain mutation, debounce a sync to Postgres. Load on sign-in. Logout clears local state and **does not write**.
 
-Auth session can live in the same store or a tiny `auth` slice. The filename can stay `documentStore` because the domain type is still `Document`; we are not wrapping a JSON blob anymore.
+No `authStore`. Session lives in supabase-js (`useAuth`). The filename stays `documentStore` because the domain type is still `Document`; we are not wrapping a JSON blob anymore.
 
 ## Transform: DB rows ↔ domain (not `documentDb`)
 
-No generic “document database” module. A **mapper** next to the Supabase client, e.g. [`apps/web/src/lib/workspaceMapper.ts`](apps/web/src/lib/workspaceMapper.ts):
+No generic “document database” module. A **`lib/workspace/`** cluster next to the Supabase client (same pattern as [`lib/isochrone/`](apps/web/src/lib/isochrone/)): pure mapper in `mapper.ts`, PostgREST in `api.ts`. Public seam is [`lib/workspace/index.ts`](apps/web/src/lib/workspace/index.ts) (`loadWorkspace` / `saveWorkspace` / `ensureWorkspace`).
 
 **Load (PostgREST → domain)**
 
@@ -73,7 +75,7 @@ No generic “document database” module. A **mapper** next to the Supabase cli
 
 Isochrone `geojson` / `contours` stay JSONB **columns** on the isochrone row.
 
-The UI never thinks in SQL. Domain never imports `supabase-js`. Only the mapper + store sync know about tables.
+The UI never thinks in SQL. Domain never imports `supabase-js`. Only `lib/workspace/` (mapper + api) and `useWorkspaceSync` know about tables.
 
 ## Secure access from the client
 
@@ -188,14 +190,126 @@ The **client** generates ids in [`createId`](packages/domain/src/document.ts): `
 
 `tree_nodes` has no id: `node_id` is the child’s id; `parent_id` is null or a `lyr_` id. `origin_place_id` is the place’s `plc_` id.
 
-## App changes
+## App file layout
 
-- [`apps/web/src/lib/supabase.ts`](apps/web/src/lib/supabase.ts) — browser client, PKCE, session
-- [`apps/web/src/lib/workspaceMapper.ts`](apps/web/src/lib/workspaceMapper.ts) — row ↔ `Document` + `loadWorkspace` / `saveWorkspace`
-- [`apps/web/src/store/documentStore.ts`](apps/web/src/store/documentStore.ts) — remove persist; hydrate/sync via mapper
-- Domain `createId('lyr'|'plc'|'iso')`; first workspace `createId('wsp')`
-- Login gate + sidebar logout
-- `supabase/migrations/` via `supabase migration new`
+Domain still never imports `supabase-js`. UI still never calls `supabase.from`.
+
+```mermaid
+flowchart TB
+  subgraph ui [components and hooks]
+    AuthGate
+    LoginScreen
+    AccountMenu
+    useAuth
+    useWorkspaceSync
+  end
+  subgraph store [store]
+    documentStore
+  end
+  subgraph io [lib]
+    supabaseClient[supabase.ts]
+    mapper[workspace/mapper.ts]
+    api[workspace/api.ts]
+  end
+  subgraph sql [repo root]
+    migrations[supabase/migrations]
+  end
+  AuthGate --> useAuth
+  useAuth --> supabaseClient
+  AccountMenu --> useAuth
+  useWorkspaceSync --> documentStore
+  useWorkspaceSync --> api
+  documentStore --> mapper
+  api --> mapper
+  api --> supabaseClient
+  supabaseClient --> migrations
+```
+
+### New files (`apps/web`)
+
+```
+apps/web/src/
+  lib/
+    supabase.ts                         # browser client (anon key, PKCE)
+    database.types.ts                   # generated PostgREST types
+    workspace/
+      types.ts                          # row DTOs used by mapper (thin wrappers over generated)
+      mapper.ts                         # rowsToDocument / documentToRows (pure)
+      mapper.test.ts                    # round-trip + tree_nodes order
+      api.ts                            # loadWorkspace / saveWorkspace / ensureWorkspace
+      index.ts                          # re-export load/save only
+  hooks/
+    useAuth.ts                          # session, magic-link, signOut, onAuthStateChange
+    useWorkspaceSync.ts                 # hydrate on sign-in; debounce save; skip on logout
+  components/
+    auth/
+      AuthGate.tsx                      # no session → LoginScreen; loading → existing spinner
+      LoginScreen.tsx                   # email + magic link
+      AccountMenu.tsx                   # sidebar email + logout
+```
+
+- [`lib/supabase.ts`](apps/web/src/lib/supabase.ts) — `supabase` singleton via `createClient<Database>(VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY)` with `auth.flowType: 'pkce'`, `detectSessionInUrl: true`. Session JWT stays in supabase-js storage (not Zustand). Never `service_role`.
+- [`lib/database.types.ts`](apps/web/src/lib/database.types.ts) — output of `supabase gen types typescript`. Commit it. Mapper/api import `Tables<'layers'>` etc. from here.
+- [`lib/workspace/types.ts`](apps/web/src/lib/workspace/types.ts) — `WorkspaceSnapshot` (`workspace` + `layers` + `places` + `isochrones` + `tree_nodes`). Optional camelCase aliases if generated names are too noisy.
+- [`lib/workspace/mapper.ts`](apps/web/src/lib/workspace/mapper.ts) — `rowsToDocument(snapshot) → Document`; `documentToRows(doc, workspaceId) → snapshot`. Column map: `lng`/`lat` ↔ `coordinates`; `source_provider`/`provider_id` ↔ `sourceProvider`/`providerId`; `origin_place_id` ↔ `originPlaceId`. `tree_nodes` ordered by `parent_id`, `sort_index` → `rootChildren` / layer `children`. Does **not** mint ids. Does **not** import `supabase-js`.
+- [`lib/workspace/api.ts`](apps/web/src/lib/workspace/api.ts) — `ensureWorkspace()` — select by `auth.uid()`, else insert `{ id: createId('wsp'), user_id }` with empty tree. `loadWorkspace()` — fetch four child tables, `rowsToDocument`. `saveWorkspace(doc, workspaceId)` — `documentToRows`, upsert by `id`, delete missing ids, **abort if delete set would wipe a non-empty workspace**. Update `workspaces.updated_at`.
+- [`lib/workspace/index.ts`](apps/web/src/lib/workspace/index.ts) — public seam: `loadWorkspace`, `saveWorkspace`, `ensureWorkspace`. Store/hooks import this, not table names.
+- [`hooks/useAuth.ts`](apps/web/src/hooks/useAuth.ts) — `session`, `user`, `loading`; `signInWithOtp(email)`; `signOut()`; subscribe `onAuthStateChange`.
+- [`hooks/useWorkspaceSync.ts`](apps/web/src/hooks/useWorkspaceSync.ts) — on `SIGNED_IN`: `loadWorkspace` → `hydrateDocument`. Subscribe to `document` (not UI ephemera); debounce flush → `saveWorkspace`. On `SIGNED_OUT`: cancel timer, `resetLocal()`, **do not write**.
+- [`components/auth/AuthGate.tsx`](apps/web/src/components/auth/AuthGate.tsx) — gate around today’s chrome: unauthenticated users never see map/store data.
+- [`components/auth/LoginScreen.tsx`](apps/web/src/components/auth/LoginScreen.tsx) — magic-link form (existing shadcn `Input` / `Button`).
+- [`components/auth/AccountMenu.tsx`](apps/web/src/components/auth/AccountMenu.tsx) — compact email + Log out for the sidebar footer.
+
+### New files (repo root — not a package)
+
+```
+supabase/
+  config.toml
+  migrations/
+    <timestamp>_init.sql              # tables, CHECKs, FKs, RLS, GRANTs
+```
+
+One migration is enough: `workspaces`, `layers`, `places`, `isochrones`, `tree_nodes`; id prefix CHECKs (`wsp_` / `lyr_` / `plc_` / `iso_`); RLS `user_id = auth.uid()` via workspace ownership; `authenticated` CRUD subject to RLS; `anon` no useful grants.
+
+`.gitignore`: add `.supabase/` (CLI temp). Do not commit secrets.
+
+### Touched existing files (no new modules)
+
+- [`apps/web/src/store/documentStore.ts`](apps/web/src/store/documentStore.ts) — drop `persist`, `idb-keyval`, IDB empty-guard, IndexedDB migrate v2–v4. Keep `document` + UI ephemera. Add `workspaceId: string | null`, `hydrateDocument({ document, workspaceId })`, `resetLocal()` (empty doc, clear selection/preview, `hydrated: false`). Mutations stay domain wrappers; they do **not** call PostgREST (`useWorkspaceSync` watches `document`).
+- [`apps/web/src/App.tsx`](apps/web/src/App.tsx) — wrap with `AuthGate`; mount `useWorkspaceSync`; drop `useDocumentStore.persist.onFinishHydration`.
+- [`apps/web/src/components/AppSidebar.tsx`](apps/web/src/components/AppSidebar.tsx) — render `AccountMenu` at the bottom of the floating sidebar (search / layers unchanged).
+- [`apps/web/src/vite-env.d.ts`](apps/web/src/vite-env.d.ts) + [`apps/web/.env.example`](apps/web/.env.example) — `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`.
+- [`apps/web/package.json`](apps/web/package.json) — add `@supabase/supabase-js`; remove `idb-keyval`; add `vitest` for mapper tests (domain already has it).
+- [`packages/domain/src/document.ts`](packages/domain/src/document.ts) — `createId(prefix: 'wsp' | 'lyr' | 'plc' | 'iso')` (today: `'layer'` / `'place'` / `'isochrone'`).
+- [`packages/domain/src/mutations.ts`](packages/domain/src/mutations.ts) — `createId('lyr'|'plc'|'iso')`. Workspace id is minted only in `ensureWorkspace`.
+- [`packages/domain/src/index.ts`](packages/domain/src/index.ts) + [`domain.test.ts`](packages/domain/src/domain.test.ts) — export prefix type; assert prefixes.
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) + [`README.md`](README.md) — Zustand = working copy; mapper = I/O seam; IndexedDB gone; env names only.
+
+Leave IndexedDB migrate helpers in domain (`migratePlaceVisibility`, etc.) unused by the store; Postgres is a fresh schema, not a blob migrate.
+
+### What does not get a file
+
+- No `packages/api`, Edge Functions, or `documentDb.ts`.
+- No `supabase.from(...)` in components or domain.
+- No Zustand persist middleware and no IDB key `map-layers:v1`.
+- Auth JWT is not a second document blob — supabase-js owns the session.
+
+### Sync data flow
+
+```mermaid
+sequenceDiagram
+  participant UI
+  participant Store
+  participant Sync as useWorkspaceSync
+  participant Api as workspace/api
+  participant PG as PostgREST plus RLS
+
+  UI->>Store: domain mutation
+  Sync->>Store: watch document
+  Sync->>Api: debounced saveWorkspace
+  Api->>PG: upsert plus delete missing ids
+  Note over Sync: signOut cancels timer and skips save
+```
 
 ## Deploy
 
@@ -220,7 +334,7 @@ Until then: no Express/Lambda app. Postgres RPC or one Edge Function is the next
 
 ## Path to a backend later
 
-Yes, if we keep one seam: **UI and `packages/domain` never call PostgREST**. Only the mapper (load/save workspace) and today’s search/isochrone `lib/` adapters talk to the network.
+Yes, if we keep one seam: **UI and `packages/domain` never call PostgREST**. Only `lib/workspace/` (`loadWorkspace` / `saveWorkspace`) and today’s search/isochrone `lib/` adapters talk to the network.
 
 That is the same layering Architecture already has (`lib/` = I/O adapters). Adding a backend is swapping adapters, not rewriting the tree or the sidebar.
 
@@ -228,7 +342,7 @@ That is the same layering Architecture already has (`lib/` = I/O adapters). Addi
 flowchart LR
   Domain[packages/domain]
   Store[Zustand]
-  Mapper[workspace mapper]
+  Mapper[lib/workspace]
   Search[googlePlacesSearch]
   Iso[isochrone provider]
   Domain --> Store
@@ -246,7 +360,7 @@ Concrete order when it becomes necessary:
 
 1. **Edge Functions for secrets** — Places + Isochrone use a server Mapbox/Google key. Client `lib/` functions change URL from Google/Mapbox to `/functions/v1/...`. Schema and mapper unchanged.
 2. **Postgres RPC** — still no Node app. Use for transactions or sharing rules that are SQL.
-3. **BFF** — mapper’s `loadWorkspace` / `saveWorkspace` call _your_ HTTP API with the user JWT; the server uses `service_role` or the user JWT against Postgres. Tables and RLS stay. Zustand and domain stay.
+3. **BFF** — `lib/workspace` `loadWorkspace` / `saveWorkspace` call _your_ HTTP API with the user JWT; the server uses `service_role` or the user JWT against Postgres. Tables and RLS stay. Zustand and domain stay.
 
 What would block this path: sprinkling `supabase.from('places')` through components, or moving domain mutations into SQL-only with no in-memory `Document`. We will not do that in this plan.
 
