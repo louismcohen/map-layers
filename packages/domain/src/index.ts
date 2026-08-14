@@ -1,4 +1,6 @@
-export { createEmptyDocument, createId } from './document'
+export type { IdPrefix } from './document'
+export { createEmptyDocument, createId, migratePlaceVisibility } from './document'
+export { isochroneArea, pickSmallestIsochroneId } from './isochroneArea'
 export type {
 	AddIsochroneInput,
 	AddPlacesInput,
@@ -20,23 +22,24 @@ export {
 	setIsochroneVisible,
 	setLayerCollapsed,
 	setLayerColor,
-	setLayerMaki,
+	setLayerIcon,
 	setLayerVisible,
+	setPlaceVisible,
 	toggleLayerVisible,
+	togglePlaceVisible,
 	ungroupLayer,
 } from './mutations'
 export type { DropTarget } from './resolveDropTarget'
 export { resolveDropTarget } from './resolveDropTarget'
-export { isochroneArea, pickSmallestIsochroneId } from './isochroneArea'
 export type { TreeRow, VisibleIsochrone, VisiblePlace } from './selectors'
 export {
 	collectDescendantIds,
 	collectPlaceIdsInSubtree,
-	findExistingMapboxIds,
+	findExistingProviderKeys,
 	flattenTree,
 	getAncestorLayerIds,
 	getEffectiveColor,
-	getEffectiveMaki,
+	getEffectiveIcon,
 	getIsochrone,
 	getLayer,
 	getNode,
@@ -48,6 +51,7 @@ export {
 	listLayers,
 	listVisibleIsochrones,
 	listVisiblePlaces,
+	placeProviderKey,
 } from './selectors'
 export type {
 	ContentNode,
@@ -62,6 +66,7 @@ export type {
 	NodeId,
 	PlaceDraft,
 	PlaceNode,
+	PlaceSourceProvider,
 } from './types'
 export {
 	DEFAULT_PLACE_COLOR,

@@ -1,12 +1,13 @@
 import { createId } from './document'
 import {
 	collectDescendantIds,
-	findExistingMapboxIds,
+	findExistingProviderKeys,
 	getLayer,
 	getParentId,
 	getPlace,
 	listAttachedIsochroneIds,
 	listAttachedIsochrones,
+	placeProviderKey,
 } from './selectors'
 import {
 	DEFAULT_PLACE_COLOR,
@@ -95,7 +96,7 @@ export function createLayer(
 	if (!name) throw new Error('Layer name is required')
 
 	const next = cloneDoc(doc)
-	const id = createId('layer')
+	const id = createId('lyr')
 	const parentId = input.parentId === undefined ? null : input.parentId
 	const layer: LayerNode = {
 		id,
@@ -137,6 +138,20 @@ export function toggleLayerVisible(doc: Document, id: NodeId): Document {
 	return setLayerVisible(doc, id, !layer.visible)
 }
 
+export function setPlaceVisible(doc: Document, id: NodeId, visible: boolean): Document {
+	const next = cloneDoc(doc)
+	const place = getPlace(next, id)
+	if (!place) throw new Error(`Place not found: ${id}`)
+	place.visible = visible
+	return next
+}
+
+export function togglePlaceVisible(doc: Document, id: NodeId): Document {
+	const place = getPlace(doc, id)
+	if (!place) throw new Error(`Place not found: ${id}`)
+	return setPlaceVisible(doc, id, !place.visible)
+}
+
 export function setLayerColor(doc: Document, id: NodeId, color: string): Document {
 	const next = cloneDoc(doc)
 	const layer = getLayer(next, id)
@@ -146,12 +161,12 @@ export function setLayerColor(doc: Document, id: NodeId, color: string): Documen
 }
 
 /** Set or clear (`undefined`) the layer’s pin glyph override (Phosphor name). */
-export function setLayerMaki(doc: Document, id: NodeId, maki: string | undefined): Document {
+export function setLayerIcon(doc: Document, id: NodeId, icon: string | undefined): Document {
 	const next = cloneDoc(doc)
 	const layer = getLayer(next, id)
 	if (!layer) throw new Error(`Layer not found: ${id}`)
-	if (maki) layer.maki = maki
-	else delete layer.maki
+	if (icon) layer.icon = icon
+	else delete layer.icon
 	return next
 }
 
@@ -271,7 +286,7 @@ export function deleteNodes(doc: Document, ids: NodeId[]): Document {
 export type AddPlacesResult = {
 	doc: Document
 	addedIds: NodeId[]
-	skippedMapboxIds: string[]
+	skippedProviderKeys: string[]
 }
 
 export type AddPlacesInput = {
@@ -283,37 +298,40 @@ export type AddPlacesInput = {
 export function addPlaces(doc: Document, input: AddPlacesInput): AddPlacesResult {
 	const next = cloneDoc(doc)
 	const parentId = input.targetParentId === undefined ? null : input.targetParentId
-	const existing = findExistingMapboxIds(next)
+	const existing = findExistingProviderKeys(next)
 	const addedIds: NodeId[] = []
-	const skippedMapboxIds: string[] = []
+	const skippedProviderKeys: string[] = []
 	const list = getChildList(next, parentId)
 	let index = input.index ?? list.length
 
 	for (const draft of input.places) {
-		if (existing.has(draft.mapboxId)) {
-			skippedMapboxIds.push(draft.mapboxId)
+		const key = placeProviderKey(draft.sourceProvider, draft.providerId)
+		if (existing.has(key)) {
+			skippedProviderKeys.push(key)
 			continue
 		}
-		const id = createId('place')
+		const id = createId('plc')
 		const place: PlaceNode = {
 			id,
 			kind: 'place',
 			name: draft.name,
-			mapboxId: draft.mapboxId,
+			sourceProvider: draft.sourceProvider,
+			providerId: draft.providerId,
 			coordinates: draft.coordinates,
 			address: draft.address,
 			featureType: draft.featureType,
-			maki: draft.maki,
+			icon: draft.icon,
 			raw: draft.raw,
+			visible: true,
 		}
 		next.nodes[id] = place
 		list.splice(index, 0, id)
 		index += 1
-		existing.add(draft.mapboxId)
+		existing.add(key)
 		addedIds.push(id)
 	}
 
-	return { doc: next, addedIds, skippedMapboxIds }
+	return { doc: next, addedIds, skippedProviderKeys }
 }
 
 export type AddIsochroneInput = {
@@ -353,7 +371,7 @@ export function addIsochrone(
 		index = list.length
 	}
 
-	const id = createId('isochrone')
+	const id = createId('iso')
 	const node: IsochroneNode = {
 		id,
 		kind: 'isochrone',

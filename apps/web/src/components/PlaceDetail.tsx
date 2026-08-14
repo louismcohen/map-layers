@@ -189,8 +189,8 @@ export function PlaceDetail({ mapRef }: PlaceDetailProps) {
                                             },
                                         );
                                     }}
-                                    aria-label='Fit to Map'
-                                    title='Fit to Map'
+                                    aria-label='Fit To Map'
+                                    title='Fit To Map'
                                 >
                                     <FrameCornersIcon
                                         className='size-4'

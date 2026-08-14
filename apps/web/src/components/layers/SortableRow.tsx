@@ -58,7 +58,7 @@ export type SortableRowProps = {
     onMenuOpenChange: (open: boolean) => void;
     onStyleOpenChange: (open: boolean) => void;
     onPickColor: (color: string) => void;
-    onPickMaki: (maki: string | undefined) => void;
+    onPickIcon: (icon: string | undefined) => void;
     onUngroup: () => void;
     onDelete: () => void;
     onFit: () => void;
@@ -86,7 +86,7 @@ export function SortableRow({
     onMenuOpenChange,
     onStyleOpenChange,
     onPickColor,
-    onPickMaki,
+    onPickIcon,
     onUngroup,
     onDelete,
     onFit,
@@ -114,8 +114,7 @@ export function SortableRow({
     const isIsochrone = node.kind === 'isochrone';
     const isPlace = node.kind === 'place';
     const showStyle = isLayer || (isIsochrone && isRoot);
-    const showVisibility = isLayer || isIsochrone;
-    const visible = isLayer || isIsochrone ? node.visible : true;
+    const visible = node.visible !== false;
     const IsochroneProfileIcon = isIsochrone
         ? ISOCHRONE_PROFILE_ICON[node.profile]
         : null;
@@ -189,11 +188,11 @@ export function SortableRow({
                     {showStyle ? (
                         <LayerStylePicker
                             color={node.color}
-                            maki={isLayer ? node.maki : undefined}
+                            icon={isLayer ? node.icon : undefined}
                             open={styleOpen}
                             onOpenChange={onStyleOpenChange}
                             onPickColor={onPickColor}
-                            onPickMaki={onPickMaki}
+                            onPickIcon={onPickIcon}
                             showIcons={isLayer}
                         />
                     ) : null}
@@ -223,27 +222,25 @@ export function SortableRow({
                             <span className='truncate'>{node.name}</span>
                         </button>
                     )}
-                    {showVisibility ? (
-                        <button
-                            type='button'
-                            onClick={onToggleVisible}
-                            className={cn(
-                                'flex size-5 shrink-0 items-center justify-center rounded opacity-0 transition-opacity duration-100 ease-out group-hover/row:opacity-100 focus-visible:opacity-100',
-                                visible
-                                    ? 'text-foreground'
-                                    : 'text-muted-foreground',
-                            )}
-                            aria-label={visible ? 'Hide' : 'Show'}
-                            aria-pressed={visible}
-                            title={visible ? 'Hide' : 'Show'}
-                        >
-                            {visible ? (
-                                <EyeIcon className='size-4' aria-hidden />
-                            ) : (
-                                <EyeSlashIcon className='size-4' aria-hidden />
-                            )}
-                        </button>
-                    ) : null}
+                    <button
+                        type='button'
+                        onClick={onToggleVisible}
+                        className={cn(
+                            'flex size-5 shrink-0 items-center justify-center rounded opacity-0 transition-opacity duration-100 ease-out group-hover/row:opacity-100 focus-visible:opacity-100',
+                            visible
+                                ? 'text-foreground'
+                                : 'text-muted-foreground',
+                        )}
+                        aria-label={visible ? 'Hide' : 'Show'}
+                        aria-pressed={visible}
+                        title={visible ? 'Hide' : 'Show'}
+                    >
+                        {visible ? (
+                            <EyeIcon className='size-4' aria-hidden />
+                        ) : (
+                            <EyeSlashIcon className='size-4' aria-hidden />
+                        )}
+                    </button>
                     <DropdownMenu
                         open={menuOpen}
                         onOpenChange={onMenuOpenChange}
@@ -270,7 +267,7 @@ export function SortableRow({
                                     <DropdownMenuItem
                                         onClick={onCreateSublayer}
                                     >
-                                        New sublayer
+                                        New Sublayer
                                     </DropdownMenuItem>
                                     <DropdownMenuItem onClick={onUngroup}>
                                         Ungroup
@@ -287,7 +284,7 @@ export function SortableRow({
                             </DropdownMenuItem>
                             {!isIsochrone ? (
                                 <DropdownMenuItem onClick={onFit}>
-                                    Fit to Map
+                                    Fit To Map
                                 </DropdownMenuItem>
                             ) : null}
                             <DropdownMenuItem

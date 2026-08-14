@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { createEmptyDocument } from './document'
+import { createEmptyDocument, createId, migratePlaceVisibility } from './document'
+import { isochroneArea, pickSmallestIsochroneId } from './isochroneArea'
 import {
 	addIsochrone,
 	addPlaces,
@@ -11,16 +12,16 @@ import {
 	setIsochroneColor,
 	setIsochroneVisible,
 	setLayerColor,
-	setLayerMaki,
+	setLayerIcon,
 	setLayerVisible,
+	setPlaceVisible,
 	ungroupLayer,
 } from './mutations'
-import { isochroneArea, pickSmallestIsochroneId } from './isochroneArea'
 import { resolveDropTarget } from './resolveDropTarget'
 import {
 	flattenTree,
 	getEffectiveColor,
-	getEffectiveMaki,
+	getEffectiveIcon,
 	getParentId,
 	isEffectivelyVisible,
 	listAttachedIsochrones,
@@ -31,6 +32,28 @@ import type { IsochroneGeoJSON } from './types'
 import { milesToMeters } from './types'
 
 describe('domain tree', () => {
+	it('mints 3-letter id prefixes', () => {
+		expect(createId('wsp')).toMatch(/^wsp_/)
+		expect(createId('lyr')).toMatch(/^lyr_/)
+		expect(createId('plc')).toMatch(/^plc_/)
+		expect(createId('iso')).toMatch(/^iso_/)
+
+		const { layerId } = createLayer(createEmptyDocument(), { name: 'Cafes' })
+		expect(layerId.startsWith('lyr_')).toBe(true)
+
+		const added = addPlaces(createEmptyDocument(), {
+			places: [
+				{
+					name: 'Blue Bottle',
+					sourceProvider: 'google',
+					providerId: 'poi.1',
+					coordinates: { lng: -122.4, lat: 37.8 },
+				},
+			],
+		})
+		expect(added.addedIds[0]?.startsWith('plc_')).toBe(true)
+	})
+
 	it('creates layers and places with effective color/visibility', () => {
 		let doc = createEmptyDocument()
 		const { doc: withLayer, layerId } = createLayer(doc, { name: 'Cafes', color: '#da2007' })
@@ -41,7 +64,8 @@ describe('domain tree', () => {
 			places: [
 				{
 					name: 'Blue Bottle',
-					mapboxId: 'poi.1',
+					sourceProvider: 'google',
+					providerId: 'poi.1',
 					coordinates: { lng: -122.4, lat: 37.8 },
 				},
 			],
@@ -63,7 +87,7 @@ describe('domain tree', () => {
 		expect(getEffectiveColor(doc, placeId)).toBe('#136f63')
 	})
 
-	it('cascades layer maki over place maki', () => {
+	it('cascades layer icon over place icon', () => {
 		let doc = createEmptyDocument()
 		const { doc: withLayer, layerId } = createLayer(doc, { name: 'Food' })
 		doc = withLayer
@@ -73,9 +97,10 @@ describe('domain tree', () => {
 			places: [
 				{
 					name: 'Cafe',
-					mapboxId: 'poi.maki',
+					sourceProvider: 'google',
+					providerId: 'poi.cafe',
 					coordinates: { lng: 0, lat: 0 },
-					maki: 'cafe',
+					icon: 'cafe',
 				},
 			],
 		})
@@ -83,13 +108,13 @@ describe('domain tree', () => {
 		const placeId = added.addedIds[0]
 		if (!placeId) throw new Error('missing place')
 
-		expect(getEffectiveMaki(doc, placeId)).toBe('cafe')
+		expect(getEffectiveIcon(doc, placeId)).toBe('cafe')
 
-		doc = setLayerMaki(doc, layerId, 'restaurant')
-		expect(getEffectiveMaki(doc, placeId)).toBe('restaurant')
+		doc = setLayerIcon(doc, layerId, 'restaurant')
+		expect(getEffectiveIcon(doc, placeId)).toBe('restaurant')
 
-		doc = setLayerMaki(doc, layerId, undefined)
-		expect(getEffectiveMaki(doc, placeId)).toBe('cafe')
+		doc = setLayerIcon(doc, layerId, undefined)
+		expect(getEffectiveIcon(doc, placeId)).toBe('cafe')
 	})
 
 	it('nests layers and cascades visibility', () => {
@@ -108,7 +133,8 @@ describe('domain tree', () => {
 			places: [
 				{
 					name: 'Nested Place',
-					mapboxId: 'poi.2',
+					sourceProvider: 'google',
+					providerId: 'poi.2',
 					coordinates: { lng: 0, lat: 0 },
 				},
 			],
@@ -135,12 +161,14 @@ describe('domain tree', () => {
 			places: [
 				{
 					name: 'A',
-					mapboxId: 'a',
+					sourceProvider: 'google',
+					providerId: 'a',
 					coordinates: { lng: 1, lat: 1 },
 				},
 				{
 					name: 'B',
-					mapboxId: 'b',
+					sourceProvider: 'google',
+					providerId: 'b',
 					coordinates: { lng: 2, lat: 2 },
 				},
 			],
@@ -187,7 +215,8 @@ describe('domain tree', () => {
 			places: [
 				{
 					name: 'Same',
-					mapboxId: 'dup',
+					sourceProvider: 'google',
+					providerId: 'dup',
 					coordinates: { lng: 0, lat: 0 },
 				},
 			],
@@ -198,13 +227,14 @@ describe('domain tree', () => {
 			places: [
 				{
 					name: 'Same again',
-					mapboxId: 'dup',
+					sourceProvider: 'google',
+					providerId: 'dup',
 					coordinates: { lng: 1, lat: 1 },
 				},
 			],
 		})
 		expect(second.addedIds).toHaveLength(0)
-		expect(second.skippedMapboxIds).toEqual(['dup'])
+		expect(second.skippedProviderKeys).toEqual(['google:dup'])
 
 		doc = deleteNodes(doc, [layer.layerId])
 		expect(doc.nodes[layer.layerId]).toBeUndefined()
@@ -217,7 +247,8 @@ describe('domain tree', () => {
 			places: [
 				{
 					name: 'Root place',
-					mapboxId: 'root.1',
+					sourceProvider: 'google',
+					providerId: 'root.1',
 					coordinates: { lng: 10, lat: 10 },
 				},
 			],
@@ -238,7 +269,8 @@ describe('domain tree', () => {
 			places: [
 				{
 					name: 'A',
-					mapboxId: 'a',
+					sourceProvider: 'google',
+					providerId: 'a',
 					coordinates: { lng: 0, lat: 0 },
 				},
 			],
@@ -295,8 +327,8 @@ describe('domain tree', () => {
 		const places = addPlaces(doc, {
 			targetParentId: layer.layerId,
 			places: [
-				{ name: 'A', mapboxId: 'a', coordinates: { lng: 0, lat: 0 } },
-				{ name: 'B', mapboxId: 'b', coordinates: { lng: 1, lat: 1 } },
+				{ name: 'A', sourceProvider: 'google', providerId: 'a', coordinates: { lng: 0, lat: 0 } },
+				{ name: 'B', sourceProvider: 'google', providerId: 'b', coordinates: { lng: 1, lat: 1 } },
 			],
 		})
 		doc = places.doc
@@ -401,7 +433,8 @@ describe('domain tree', () => {
 			places: [
 				{
 					name: 'Cafe',
-					mapboxId: 'poi.cafe',
+					sourceProvider: 'google',
+					providerId: 'poi.cafe',
 					coordinates: { lng: -122, lat: 37 },
 				},
 			],
@@ -445,7 +478,8 @@ describe('domain tree', () => {
 			places: [
 				{
 					name: 'Cafe',
-					mapboxId: 'poi.cafe',
+					sourceProvider: 'google',
+					providerId: 'poi.cafe',
 					coordinates: { lng: -122, lat: 37 },
 				},
 			],
@@ -484,7 +518,8 @@ describe('domain tree', () => {
 			places: [
 				{
 					name: 'Cafe',
-					mapboxId: 'poi.cafe',
+					sourceProvider: 'google',
+					providerId: 'poi.cafe',
 					coordinates: { lng: -122, lat: 37 },
 				},
 			],
@@ -569,5 +604,96 @@ describe('domain tree', () => {
 			),
 		).toBe('walk')
 		expect(pickSmallestIsochroneId(['missing'], new Map([['walk', 1]]))).toBeNull()
+	})
+
+	it('hides attached isochrones when the origin place is hidden, without changing iso visible', () => {
+		let doc = createEmptyDocument()
+		const places = addPlaces(doc, {
+			places: [
+				{
+					name: 'Cafe',
+					sourceProvider: 'google',
+					providerId: 'poi.cafe',
+					coordinates: { lng: -122, lat: 37 },
+				},
+			],
+		})
+		doc = places.doc
+		const placeId = places.addedIds[0]
+		if (!placeId) throw new Error('missing place')
+
+		const attached = addIsochrone(doc, {
+			draft: {
+				name: '15 min walk',
+				center: { lng: -122, lat: 37 },
+				profile: 'walking',
+				metric: 'time',
+				contours: [15],
+				geojson: emptyGeojson,
+				color: '#da2007',
+				visible: true,
+				originPlaceId: placeId,
+			},
+		})
+		doc = attached.doc
+
+		const standalone = addIsochrone(doc, {
+			draft: {
+				name: '10 min bike',
+				center: { lng: -122, lat: 37 },
+				profile: 'cycling',
+				metric: 'time',
+				contours: [10],
+				geojson: emptyGeojson,
+				color: '#ec9916',
+				visible: true,
+			},
+		})
+		doc = standalone.doc
+
+		expect(isEffectivelyVisible(doc, placeId)).toBe(true)
+		expect(isEffectivelyVisible(doc, attached.id)).toBe(true)
+		expect(isEffectivelyVisible(doc, standalone.id)).toBe(true)
+
+		doc = setPlaceVisible(doc, placeId, false)
+		expect(isEffectivelyVisible(doc, placeId)).toBe(false)
+		expect(isEffectivelyVisible(doc, attached.id)).toBe(false)
+		expect(isEffectivelyVisible(doc, standalone.id)).toBe(true)
+		expect(doc.nodes[attached.id]).toMatchObject({ visible: true })
+		expect(listVisiblePlaces(doc)).toHaveLength(0)
+		expect(listVisibleIsochrones(doc).map((item) => item.isochrone.id)).toEqual([standalone.id])
+
+		doc = setIsochroneVisible(doc, attached.id, false)
+		doc = setPlaceVisible(doc, placeId, true)
+		expect(isEffectivelyVisible(doc, placeId)).toBe(true)
+		expect(isEffectivelyVisible(doc, attached.id)).toBe(false)
+		expect(doc.nodes[attached.id]).toMatchObject({ visible: false })
+	})
+
+	it('migrates missing place visible to true', () => {
+		let doc = createEmptyDocument()
+		const added = addPlaces(doc, {
+			places: [
+				{
+					name: 'Cafe',
+					sourceProvider: 'google',
+					providerId: 'poi.cafe',
+					coordinates: { lng: -122, lat: 37 },
+				},
+			],
+		})
+		doc = added.doc
+		const placeId = added.addedIds[0]
+		if (!placeId) throw new Error('missing place')
+
+		const nodes = { ...doc.nodes }
+		const place = { ...nodes[placeId] } as { visible?: boolean }
+		delete place.visible
+		nodes[placeId] = place as (typeof nodes)[string]
+		const legacy = { ...doc, nodes }
+
+		expect(isEffectivelyVisible(legacy, placeId)).toBe(true)
+		const migrated = migratePlaceVisibility(legacy)
+		expect(migrated.nodes[placeId]).toMatchObject({ visible: true })
 	})
 })

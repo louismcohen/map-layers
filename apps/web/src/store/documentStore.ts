@@ -11,33 +11,16 @@ import {
 	setIsochroneVisible as domainSetIsochroneVisible,
 	setLayerCollapsed as domainSetLayerCollapsed,
 	setLayerColor as domainSetLayerColor,
-	setLayerMaki as domainSetLayerMaki,
+	setLayerIcon as domainSetLayerIcon,
 	setLayerVisible as domainSetLayerVisible,
+	setPlaceVisible as domainSetPlaceVisible,
 	ungroupLayer as domainUngroupLayer,
 	type IsochroneDraft,
 	type NodeId,
 	type PlaceDraft,
 } from '@map-layers/domain'
-import { del, get, set } from 'idb-keyval'
 import { toast } from 'sonner'
 import { create } from 'zustand'
-import { createJSONStorage, persist } from 'zustand/middleware'
-import { migrateDocumentLayerIcons } from '@/lib/googlePlaceIcon'
-
-const IDB_KEY = 'map-layers:v1'
-
-const idbStorage = {
-	getItem: async (name: string): Promise<string | null> => {
-		const value = await get<string>(name)
-		return value ?? null
-	},
-	setItem: async (name: string, value: string): Promise<void> => {
-		await set(name, value)
-	},
-	removeItem: async (name: string): Promise<void> => {
-		await del(name)
-	},
-}
 
 export type AddTarget =
 	| { type: 'root' }
@@ -47,29 +30,32 @@ export type AddTarget =
 export type SearchPreview = {
 	color: string
 	results: PlaceDraft[]
-	selectedMapboxIds: string[]
+	selectedProviderKeys: string[]
 }
 
 type DocumentStore = {
 	document: Document
+	workspaceId: string | null
 	hydrated: boolean
 	selectedNodeIds: NodeId[]
 	selectedPlaceId: NodeId | null
 	searchPreview: SearchPreview | null
 	lastSkippedCount: number
-	setHydrated: (value: boolean) => void
+	hydrateDocument: (input: { document: Document; workspaceId: string }) => void
+	resetLocal: () => void
 	setSelectedNodeIds: (ids: NodeId[]) => void
 	selectPlace: (id: NodeId | null) => void
 	setSearchPreview: (preview: SearchPreview | null) => void
-	toggleSearchSelection: (mapboxId: string) => void
-	setSearchSelection: (mapboxIds: string[]) => void
+	toggleSearchSelection: (providerKey: string) => void
+	setSearchSelection: (providerKeys: string[]) => void
 	pushToast: (message: string) => void
 	createLayer: (name: string, parentId?: NodeId | null) => NodeId | null
 	renameNode: (id: NodeId, name: string) => void
 	toggleLayerVisible: (id: NodeId) => void
 	setLayerColor: (id: NodeId, color: string) => void
-	setLayerMaki: (id: NodeId, maki: string | undefined) => void
+	setLayerIcon: (id: NodeId, icon: string | undefined) => void
 	setLayerCollapsed: (id: NodeId, collapsed: boolean) => void
+	togglePlaceVisible: (id: NodeId) => void
 	toggleIsochroneVisible: (id: NodeId) => void
 	setIsochroneColor: (id: NodeId, color: string) => void
 	ungroupLayer: (id: NodeId) => void
@@ -79,195 +65,195 @@ type DocumentStore = {
 	addIsochrone: (draft: IsochroneDraft, targetParentId?: NodeId | null) => NodeId | null
 }
 
-export const useDocumentStore = create<DocumentStore>()(
-	persist(
-		(setState, getState) => ({
+export const useDocumentStore = create<DocumentStore>()((setState, getState) => ({
+	document: createEmptyDocument(),
+	workspaceId: null,
+	hydrated: false,
+	selectedNodeIds: [],
+	selectedPlaceId: null,
+	searchPreview: null,
+	lastSkippedCount: 0,
+	hydrateDocument: ({ document, workspaceId }) =>
+		setState({
+			document,
+			workspaceId,
+			hydrated: true,
+			selectedNodeIds: [],
+			selectedPlaceId: null,
+			searchPreview: null,
+		}),
+	resetLocal: () =>
+		setState({
 			document: createEmptyDocument(),
+			workspaceId: null,
 			hydrated: false,
 			selectedNodeIds: [],
 			selectedPlaceId: null,
 			searchPreview: null,
 			lastSkippedCount: 0,
-			setHydrated: (value) => setState({ hydrated: value }),
-			setSelectedNodeIds: (ids) => setState({ selectedNodeIds: ids }),
-			selectPlace: (id) =>
-				setState({
-					selectedPlaceId: id,
-					selectedNodeIds: id ? [id] : getState().selectedNodeIds,
-				}),
-			setSearchPreview: (preview) => setState({ searchPreview: preview }),
-			toggleSearchSelection: (mapboxId) => {
-				const preview = getState().searchPreview
-				if (!preview) return
-				const selected = new Set(preview.selectedMapboxIds)
-				if (selected.has(mapboxId)) selected.delete(mapboxId)
-				else selected.add(mapboxId)
-				setState({
-					searchPreview: { ...preview, selectedMapboxIds: [...selected] },
-				})
-			},
-			setSearchSelection: (mapboxIds) => {
-				const preview = getState().searchPreview
-				if (!preview) return
-				setState({
-					searchPreview: { ...preview, selectedMapboxIds: mapboxIds },
-				})
-			},
-			pushToast: (message) => {
-				toast(message)
-			},
-			createLayer: (name, parentId = null) => {
-				try {
-					const { doc, layerId } = domainCreateLayer(getState().document, {
-						name,
-						parentId,
-					})
-					setState({ document: doc, selectedNodeIds: [layerId] })
-					return layerId
-				} catch (error) {
-					getState().pushToast(error instanceof Error ? error.message : 'Could not create layer')
-					return null
-				}
-			},
-			renameNode: (id, name) => {
-				try {
-					setState({ document: domainRenameNode(getState().document, id, name) })
-				} catch (error) {
-					getState().pushToast(error instanceof Error ? error.message : 'Could not rename')
-				}
-			},
-			toggleLayerVisible: (id) => {
-				const layer = getState().document.nodes[id]
-				if (layer?.kind !== 'layer') return
-				setState({
-					document: domainSetLayerVisible(getState().document, id, !layer.visible),
-				})
-			},
-			setLayerColor: (id, color) => {
-				setState({ document: domainSetLayerColor(getState().document, id, color) })
-			},
-			setLayerMaki: (id, maki) => {
-				setState({ document: domainSetLayerMaki(getState().document, id, maki) })
-			},
-			setLayerCollapsed: (id, collapsed) => {
-				setState({ document: domainSetLayerCollapsed(getState().document, id, collapsed) })
-			},
-			toggleIsochroneVisible: (id) => {
-				const node = getState().document.nodes[id]
-				if (node?.kind !== 'isochrone') return
-				setState({
-					document: domainSetIsochroneVisible(getState().document, id, !node.visible),
-				})
-			},
-			setIsochroneColor: (id, color) => {
-				setState({ document: domainSetIsochroneColor(getState().document, id, color) })
-			},
-			ungroupLayer: (id) => {
-				try {
-					setState({
-						document: domainUngroupLayer(getState().document, id),
-						selectedNodeIds: [],
-					})
-				} catch (error) {
-					getState().pushToast(error instanceof Error ? error.message : 'Could not ungroup')
-				}
-			},
-			deleteNodes: (ids) => {
-				const selectedPlaceId = getState().selectedPlaceId
-				setState({
-					document: domainDeleteNodes(getState().document, ids),
-					selectedNodeIds: [],
-					selectedPlaceId:
-						selectedPlaceId && ids.includes(selectedPlaceId) ? null : selectedPlaceId,
-				})
-			},
-			moveNodes: (ids, targetParentId, index) => {
-				try {
-					setState({
-						document: domainMoveNodes(getState().document, {
-							ids,
-							targetParentId,
-							index,
-						}),
-					})
-				} catch (error) {
-					getState().pushToast(error instanceof Error ? error.message : 'Could not move')
-				}
-			},
-			addPlaces: (places, target) => {
-				let doc = getState().document
-				let parentId: NodeId | null = null
-
-				if (target.type === 'layer') {
-					parentId = target.layerId
-				} else if (target.type === 'new-layer') {
-					const created = domainCreateLayer(doc, {
-						name: target.name || 'New layer',
-						color: target.color,
-					})
-					doc = created.doc
-					parentId = created.layerId
-				}
-
-				const result = domainAddPlaces(doc, {
-					places,
-					targetParentId: parentId,
-				})
-
-				setState({
-					document: result.doc,
-					searchPreview: null,
-					lastSkippedCount: result.skippedMapboxIds.length,
-					selectedNodeIds: result.addedIds.length ? result.addedIds : parentId ? [parentId] : [],
-				})
-
-				if (result.skippedMapboxIds.length > 0) {
-					getState().pushToast(
-						`Skipped ${result.skippedMapboxIds.length} duplicate place${result.skippedMapboxIds.length === 1 ? '' : 's'}`,
-					)
-				}
-				if (result.addedIds.length > 0) {
-					getState().pushToast(
-						`Added ${result.addedIds.length} place${result.addedIds.length === 1 ? '' : 's'}`,
-					)
-				}
-				return result.addedIds
-			},
-			addIsochrone: (draft, targetParentId = null) => {
-				try {
-					const { doc, id } = domainAddIsochrone(getState().document, {
-						draft,
-						targetParentId,
-					})
-					setState({ document: doc, selectedNodeIds: [id], selectedPlaceId: null })
-					getState().pushToast(`Added ${draft.name}`)
-					return id
-				} catch (error) {
-					getState().pushToast(
-						error instanceof Error ? error.message : 'Could not add isochrone',
-					)
-					return null
-				}
-			},
 		}),
-		{
-			name: IDB_KEY,
-			storage: createJSONStorage(() => idbStorage),
-			partialize: (state) => ({ document: state.document }),
-			version: 2,
-			migrate: (persisted, version) => {
-				const state = persisted as { document: Document }
-				if (version < 2) {
-					return { document: migrateDocumentLayerIcons(state.document) }
-				}
-				return state
-			},
-			onRehydrateStorage: () => (state) => {
-				if (state) {
-					state.document = migrateDocumentLayerIcons(state.document)
-					state.setHydrated(true)
-				}
-			},
-		},
-	),
-)
+	setSelectedNodeIds: (ids) => setState({ selectedNodeIds: ids }),
+	selectPlace: (id) =>
+		setState({
+			selectedPlaceId: id,
+			selectedNodeIds: id ? [id] : getState().selectedNodeIds,
+		}),
+	setSearchPreview: (preview) => setState({ searchPreview: preview }),
+	toggleSearchSelection: (providerKey) => {
+		const preview = getState().searchPreview
+		if (!preview) return
+		const selected = new Set(preview.selectedProviderKeys)
+		if (selected.has(providerKey)) selected.delete(providerKey)
+		else selected.add(providerKey)
+		setState({
+			searchPreview: { ...preview, selectedProviderKeys: [...selected] },
+		})
+	},
+	setSearchSelection: (providerKeys) => {
+		const preview = getState().searchPreview
+		if (!preview) return
+		setState({
+			searchPreview: { ...preview, selectedProviderKeys: providerKeys },
+		})
+	},
+	pushToast: (message) => {
+		toast(message)
+	},
+	createLayer: (name, parentId = null) => {
+		try {
+			const { doc, layerId } = domainCreateLayer(getState().document, {
+				name,
+				parentId,
+			})
+			setState({ document: doc, selectedNodeIds: [layerId] })
+			return layerId
+		} catch (error) {
+			getState().pushToast(error instanceof Error ? error.message : 'Could not create layer')
+			return null
+		}
+	},
+	renameNode: (id, name) => {
+		try {
+			setState({ document: domainRenameNode(getState().document, id, name) })
+		} catch (error) {
+			getState().pushToast(error instanceof Error ? error.message : 'Could not rename')
+		}
+	},
+	toggleLayerVisible: (id) => {
+		const layer = getState().document.nodes[id]
+		if (layer?.kind !== 'layer') return
+		setState({
+			document: domainSetLayerVisible(getState().document, id, !layer.visible),
+		})
+	},
+	setLayerColor: (id, color) => {
+		setState({ document: domainSetLayerColor(getState().document, id, color) })
+	},
+	setLayerIcon: (id, icon) => {
+		setState({ document: domainSetLayerIcon(getState().document, id, icon) })
+	},
+	setLayerCollapsed: (id, collapsed) => {
+		setState({ document: domainSetLayerCollapsed(getState().document, id, collapsed) })
+	},
+	togglePlaceVisible: (id) => {
+		const node = getState().document.nodes[id]
+		if (node?.kind !== 'place') return
+		setState({
+			document: domainSetPlaceVisible(getState().document, id, node.visible === false),
+		})
+	},
+	toggleIsochroneVisible: (id) => {
+		const node = getState().document.nodes[id]
+		if (node?.kind !== 'isochrone') return
+		setState({
+			document: domainSetIsochroneVisible(getState().document, id, !node.visible),
+		})
+	},
+	setIsochroneColor: (id, color) => {
+		setState({ document: domainSetIsochroneColor(getState().document, id, color) })
+	},
+	ungroupLayer: (id) => {
+		try {
+			setState({
+				document: domainUngroupLayer(getState().document, id),
+				selectedNodeIds: [],
+			})
+		} catch (error) {
+			getState().pushToast(error instanceof Error ? error.message : 'Could not ungroup')
+		}
+	},
+	deleteNodes: (ids) => {
+		const selectedPlaceId = getState().selectedPlaceId
+		setState({
+			document: domainDeleteNodes(getState().document, ids),
+			selectedNodeIds: [],
+			selectedPlaceId: selectedPlaceId && ids.includes(selectedPlaceId) ? null : selectedPlaceId,
+		})
+	},
+	moveNodes: (ids, targetParentId, index) => {
+		try {
+			setState({
+				document: domainMoveNodes(getState().document, {
+					ids,
+					targetParentId,
+					index,
+				}),
+			})
+		} catch (error) {
+			getState().pushToast(error instanceof Error ? error.message : 'Could not move')
+		}
+	},
+	addPlaces: (places, target) => {
+		let doc = getState().document
+		let parentId: NodeId | null = null
+
+		if (target.type === 'layer') {
+			parentId = target.layerId
+		} else if (target.type === 'new-layer') {
+			const created = domainCreateLayer(doc, {
+				name: target.name || 'New layer',
+				color: target.color,
+			})
+			doc = created.doc
+			parentId = created.layerId
+		}
+
+		const result = domainAddPlaces(doc, {
+			places,
+			targetParentId: parentId,
+		})
+
+		setState({
+			document: result.doc,
+			searchPreview: null,
+			lastSkippedCount: result.skippedProviderKeys.length,
+			selectedNodeIds: result.addedIds.length ? result.addedIds : parentId ? [parentId] : [],
+		})
+
+		if (result.skippedProviderKeys.length > 0) {
+			getState().pushToast(
+				`Skipped ${result.skippedProviderKeys.length} duplicate place${result.skippedProviderKeys.length === 1 ? '' : 's'}`,
+			)
+		}
+		if (result.addedIds.length > 0) {
+			getState().pushToast(
+				`Added ${result.addedIds.length} place${result.addedIds.length === 1 ? '' : 's'}`,
+			)
+		}
+		return result.addedIds
+	},
+	addIsochrone: (draft, targetParentId = null) => {
+		try {
+			const { doc, id } = domainAddIsochrone(getState().document, {
+				draft,
+				targetParentId,
+			})
+			setState({ document: doc, selectedNodeIds: [id], selectedPlaceId: null })
+			getState().pushToast(`Added ${draft.name}`)
+			return id
+		} catch (error) {
+			getState().pushToast(error instanceof Error ? error.message : 'Could not add isochrone')
+			return null
+		}
+	},
+}))

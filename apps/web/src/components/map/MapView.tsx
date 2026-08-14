@@ -3,6 +3,7 @@ import {
     listVisibleIsochrones,
     listVisiblePlaces,
     pickSmallestIsochroneId,
+    placeProviderKey,
 } from '@map-layers/domain';
 import { useCallback, useMemo } from 'react';
 import type { MapLayerMouseEvent, MapRef } from 'react-map-gl';
@@ -180,7 +181,7 @@ export function MapView({ mapRef, userLocation, onMoveEnd }: MapViewProps) {
                         </Source>
                     );
                 })}
-                {visiblePlaces.map(({ place, color, maki }) => (
+                {visiblePlaces.map(({ place, color, icon }) => (
                     <PlaceMarker
                         key={place.id}
                         id={place.id}
@@ -188,28 +189,34 @@ export function MapView({ mapRef, userLocation, onMoveEnd }: MapViewProps) {
                         latitude={place.coordinates.lat}
                         longitude={place.coordinates.lng}
                         color={color}
-                        maki={maki}
+                        icon={icon}
                         featureType={place.featureType}
                         selected={selectedPlaceId === place.id}
                         onClick={selectPlace}
                     />
                 ))}
-                {searchPreview?.results.map((result) => (
-                    <PlaceMarker
-                        key={`search-${result.mapboxId}`}
-                        id={result.mapboxId}
-                        label={result.name}
-                        latitude={result.coordinates.lat}
-                        longitude={result.coordinates.lng}
-                        color={searchPreview.color}
-                        maki={result.maki}
-                        featureType={result.featureType}
-                        selected={searchPreview.selectedMapboxIds.includes(
-                            result.mapboxId,
-                        )}
-                        onClick={toggleSearchSelection}
-                    />
-                ))}
+                {searchPreview?.results.map((result) => {
+                    const providerKey = placeProviderKey(
+                        result.sourceProvider,
+                        result.providerId,
+                    );
+                    return (
+                        <PlaceMarker
+                            key={`search-${providerKey}`}
+                            id={providerKey}
+                            label={result.name}
+                            latitude={result.coordinates.lat}
+                            longitude={result.coordinates.lng}
+                            color={searchPreview.color}
+                            icon={result.icon}
+                            featureType={result.featureType}
+                            selected={searchPreview.selectedProviderKeys.includes(
+                                providerKey,
+                            )}
+                            onClick={toggleSearchSelection}
+                        />
+                    );
+                })}
                 <UserLocationMarker userLocation={userLocation} />
             </MapboxMap>
         </div>

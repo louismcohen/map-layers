@@ -1,3 +1,4 @@
+import { placeProviderKey } from '@map-layers/domain';
 import { PolygonIcon, XIcon } from '@phosphor-icons/react';
 import type { MapRef } from 'react-map-gl';
 import { IsochroneDialog } from '@/components/isochrone/IsochroneDialog';
@@ -53,8 +54,8 @@ export function SearchPanel({ mapRef }: SearchPanelProps) {
 
     // Base UI Select.Value shows the raw value unless `items` maps value → label.
     const destItems = [
-        { value: 'new-layer', label: 'New layer' },
-        { value: 'root', label: 'Top level' },
+        { value: 'new-layer', label: 'New Layer' },
+        { value: 'root', label: 'Top Level' },
         ...layers.map((layer) => ({
             value: `layer:${layer.id}`,
             label: layer.name,
@@ -100,7 +101,7 @@ export function SearchPanel({ mapRef }: SearchPanelProps) {
                             size='icon-xs'
                             className='absolute top-1/2 right-2 -translate-y-1/2 text-foreground hover:bg-ring/20'
                             onClick={() => setQuery('')}
-                            aria-label='Clear search'
+                            aria-label='Clear Search'
                         >
                             <XIcon className='size-4' />
                         </Button>
@@ -126,10 +127,14 @@ export function SearchPanel({ mapRef }: SearchPanelProps) {
                 ) : null}
                 <ul className='space-y-1'>
                     {results.map((result) => {
-                        const checked = selected.has(result.mapboxId);
+                        const providerKey = placeProviderKey(
+                            result.sourceProvider,
+                            result.providerId,
+                        );
+                        const checked = selected.has(providerKey);
                         return (
                             <li
-                                key={result.mapboxId}
+                                key={providerKey}
                                 className='flex items-start gap-0.5'
                             >
                                 {/* Checkbox is the control; label wraps the row for hit target. */}
@@ -143,9 +148,7 @@ export function SearchPanel({ mapRef }: SearchPanelProps) {
                                     <Checkbox
                                         checked={checked}
                                         onCheckedChange={() =>
-                                            toggleSearchSelection(
-                                                result.mapboxId,
-                                            )
+                                            toggleSearchSelection(providerKey)
                                         }
                                         className='mt-0.5'
                                     />
@@ -174,7 +177,7 @@ export function SearchPanel({ mapRef }: SearchPanelProps) {
                                     variant='ghost'
                                     size='icon-xs'
                                     className='mt-1 shrink-0 text-muted-foreground hover:text-foreground'
-                                    aria-label={`Add isochrone for ${result.name}`}
+                                    aria-label={`Add Isochrone For ${result.name}`}
                                     title='Add Isochrone'
                                     onClick={(e) => {
                                         e.preventDefault();
@@ -205,7 +208,7 @@ export function SearchPanel({ mapRef }: SearchPanelProps) {
                             disabled={loadingMore}
                             onClick={loadMore}
                         >
-                            {loadingMore ? 'Loading…' : 'Load more'}
+                            {loadingMore ? 'Loading…' : 'Load More'}
                         </Button>
                     </div>
                 ) : null}
@@ -220,7 +223,7 @@ export function SearchPanel({ mapRef }: SearchPanelProps) {
                             size='xs'
                             onClick={selectAll}
                         >
-                            Select all
+                            Select All
                         </Button>
                         <span className='text-xs text-muted-foreground'>
                             {selected.size} selected
@@ -257,8 +260,8 @@ export function SearchPanel({ mapRef }: SearchPanelProps) {
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value='new-layer'>New layer</SelectItem>
-                            <SelectItem value='root'>Top level</SelectItem>
+                            <SelectItem value='new-layer'>New Layer</SelectItem>
+                            <SelectItem value='root'>Top Level</SelectItem>
                             {layers.map((layer) => (
                                 <SelectItem
                                     key={layer.id}
@@ -286,7 +289,7 @@ export function SearchPanel({ mapRef }: SearchPanelProps) {
                         className='w-full'
                         size='sm'
                     >
-                        {adding ? 'Adding…' : 'Add selected'}
+                        {adding ? 'Adding…' : 'Add Selected'}
                     </Button>
                 </div>
             ) : null}

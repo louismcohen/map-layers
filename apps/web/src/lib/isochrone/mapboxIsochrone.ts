@@ -6,7 +6,7 @@ import type { IsochroneProvider, IsochroneRequest } from './types'
 /** Mapbox denoise: drop small noisy contour islands (0–1). */
 const DENOISE = 0.1
 /** Mapbox Douglas–Peucker tolerance in meters. */
-const GENERALIZE_METERS = 200
+const GENERALIZE_METERS = 5
 /** Turf Chaikin corner-cutting passes after fetch. */
 const SMOOTH_ITERATIONS = 1
 

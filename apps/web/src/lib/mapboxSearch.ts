@@ -52,11 +52,12 @@ export async function forwardSearch(params: {
 		if (feature.geometry?.type !== 'Point') continue
 		const [lng, lat] = feature.geometry.coordinates
 		drafts.push({
-			mapboxId: feature.properties.mapbox_id,
+			sourceProvider: 'mapbox',
+			providerId: feature.properties.mapbox_id,
 			name: feature.properties.name,
 			address: feature.properties.full_address ?? feature.properties.place_formatted,
 			featureType: feature.properties.feature_type,
-			maki: feature.properties.maki,
+			icon: feature.properties.maki,
 			coordinates: { lng, lat },
 		})
 	}

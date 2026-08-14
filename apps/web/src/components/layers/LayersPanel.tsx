@@ -41,8 +41,9 @@ export function LayersPanel({ mapRef }: LayersPanelProps) {
 	const renameNode = useDocumentStore((s) => s.renameNode)
 	const toggleLayerVisible = useDocumentStore((s) => s.toggleLayerVisible)
 	const setLayerColor = useDocumentStore((s) => s.setLayerColor)
-	const setLayerMaki = useDocumentStore((s) => s.setLayerMaki)
+	const setLayerIcon = useDocumentStore((s) => s.setLayerIcon)
 	const setLayerCollapsed = useDocumentStore((s) => s.setLayerCollapsed)
+	const togglePlaceVisible = useDocumentStore((s) => s.togglePlaceVisible)
 	const toggleIsochroneVisible = useDocumentStore((s) => s.toggleIsochroneVisible)
 	const setIsochroneColor = useDocumentStore((s) => s.setIsochroneColor)
 	const ungroupLayer = useDocumentStore((s) => s.ungroupLayer)
@@ -143,6 +144,8 @@ export function LayersPanel({ mapRef }: LayersPanelProps) {
 											}}
 											onToggleVisible={() => {
 												if (row.node.kind === 'layer') toggleLayerVisible(row.id)
+												else if (row.node.kind === 'place')
+													togglePlaceVisible(row.id)
 												else if (row.node.kind === 'isochrone')
 													toggleIsochroneVisible(row.id)
 											}}
@@ -182,8 +185,8 @@ export function LayersPanel({ mapRef }: LayersPanelProps) {
 												else if (row.node.kind === 'isochrone')
 													setIsochroneColor(row.id, color)
 											}}
-											onPickMaki={(maki) => {
-												if (row.node.kind === 'layer') setLayerMaki(row.id, maki)
+											onPickIcon={(icon) => {
+												if (row.node.kind === 'layer') setLayerIcon(row.id, icon)
 											}}
 											onUngroup={() => {
 												ungroupLayer(row.id)
@@ -226,7 +229,7 @@ export function LayersPanel({ mapRef }: LayersPanelProps) {
 
 			<PromptModal
 				open={createOpen}
-				title="New layer"
+				title="New Layer"
 				label="Name"
 				confirmLabel="Create"
 				onCancel={() => setCreateOpen(false)}
@@ -242,7 +245,7 @@ export function LayersPanel({ mapRef }: LayersPanelProps) {
 
 			<PromptModal
 				open={Boolean(sublayerParentId)}
-				title="New sublayer"
+				title="New Sublayer"
 				label="Name"
 				confirmLabel="Create"
 				onCancel={() => setSublayerParentId(null)}

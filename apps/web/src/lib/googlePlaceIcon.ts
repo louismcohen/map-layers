@@ -380,7 +380,7 @@ export function iconForGoogleType(type?: string): Icon {
 	return MapPinIcon
 }
 
-/** Catalog names stored on layers (`maki` field, legacy name). */
+/** Catalog names stored on layers (`icon` field). */
 export const PLACE_ICONS = {
 	Airplane: AirplaneIcon,
 	Armchair: ArmchairIcon,
@@ -659,22 +659,23 @@ export function makiNameToPhosphor(maki: string): PlaceIconName {
 	return MAKI_TO_PHOSPHOR[maki] ?? 'MapPin'
 }
 
-/** Normalize a persisted layer `maki` to a Phosphor catalog name. */
+/** Normalize a persisted layer `icon` to a Phosphor catalog name. */
 export function resolveStoredLayerIcon(stored: string): PlaceIconName {
 	if (isPlaceIconName(stored)) return stored
 	return makiNameToPhosphor(stored)
 }
 
-/** Rewrite layer `maki` values from Maki names to Phosphor catalog names. */
+/** Rewrite layer `icon` values from Maki names to Phosphor catalog names. */
 export function migrateDocumentLayerIcons(doc: Document): Document {
+	if (!doc?.nodes) return doc
 	let changed = false
 	const nodes = { ...doc.nodes }
 	for (const [id, node] of Object.entries(nodes)) {
-		if (node.kind !== 'layer' || !node.maki) continue
-		const next = resolveStoredLayerIcon(node.maki)
-		if (next === node.maki) continue
+		if (node.kind !== 'layer' || !node.icon) continue
+		const next = resolveStoredLayerIcon(node.icon)
+		if (next === node.icon) continue
 		changed = true
-		nodes[id] = { ...node, maki: next }
+		nodes[id] = { ...node, icon: next }
 	}
 	return changed ? { ...doc, nodes } : doc
 }

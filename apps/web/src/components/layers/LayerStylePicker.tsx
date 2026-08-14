@@ -13,22 +13,22 @@ import { cn } from '@/lib/utils';
 
 type LayerStylePickerProps = {
     color: string;
-    maki: string | undefined;
+    icon: string | undefined;
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onPickColor: (color: string) => void;
-    onPickMaki: (maki: string | undefined) => void;
+    onPickIcon: (icon: string | undefined) => void;
     /** When false, only the color palette is shown (isochrones). Default true. */
     showIcons?: boolean;
 };
 
 export function LayerStylePicker({
     color,
-    maki,
+    icon,
     open,
     onOpenChange,
     onPickColor,
-    onPickMaki,
+    onPickIcon,
     showIcons = true,
 }: LayerStylePickerProps) {
     const [iconFilter, setIconFilter] = useState('');
@@ -49,18 +49,18 @@ export function LayerStylePicker({
         <Popover open={open} onOpenChange={onOpenChange}>
             <PopoverTrigger
                 className='flex size-5 shrink-0 items-center justify-center'
-                aria-label={showIcons ? 'Layer color and icon' : 'Color'}
+                aria-label={showIcons ? 'Layer Color And Icon' : 'Color'}
                 title={
                     showIcons
-                        ? maki
-                            ? `Icon: ${maki}`
-                            : 'Set layer color and icon'
-                        : 'Set color'
+                        ? icon
+                            ? `Icon: ${icon}`
+                            : 'Set Layer Color And Icon'
+                        : 'Set Color'
                 }
             >
                 {showIcons ? (
                     <PhosphorPlaceIcon
-                        name={maki}
+                        name={icon}
                         color={color}
                         className='size-4'
                     />
@@ -107,10 +107,10 @@ export function LayerStylePicker({
                                     type='button'
                                     title={name}
                                     aria-label={name}
-                                    onClick={() => onPickMaki(name)}
+                                    onClick={() => onPickIcon(name)}
                                     className={cn(
                                         'flex h-7 w-7 items-center justify-center rounded border border-transparent hover:border-border hover:bg-accent',
-                                        maki === name &&
+                                        icon === name &&
                                             'border-ring bg-accent',
                                     )}
                                 >

@@ -1,16 +1,25 @@
 export type NodeId = string
 
+/** External place search provider that supplied `providerId`. */
+export type PlaceSourceProvider = 'google' | 'mapbox'
+
 export type PlaceNode = {
 	id: NodeId
 	kind: 'place'
 	name: string
-	mapboxId: string
+	/** Which search API issued `providerId`. */
+	sourceProvider: PlaceSourceProvider
+	/** External place id (Google Place ID or Mapbox Search Box mapbox_id). */
+	providerId: string
 	coordinates: { lng: number; lat: number }
 	address?: string
 	featureType?: string
-	/** Mapbox Maki icon name from Search Box (e.g. restaurant, cafe). */
-	maki?: string
+	/** Optional pin glyph name (Phosphor catalog, or leftover Mapbox Maki kebab). Google drafts omit this. */
+	icon?: string
+	/** Optional in-memory payload; not persisted to Postgres. */
 	raw?: unknown
+	/** Own toggle; effective visibility still ANDs ancestor layers. */
+	visible: boolean
 }
 
 export type IsochroneProfile = 'walking' | 'cycling' | 'driving'
@@ -56,8 +65,8 @@ export type LayerNode = {
 	name: string
 	visible: boolean
 	color: string
-	/** Optional pin glyph override (Phosphor catalog name, e.g. Coffee). Legacy field name. */
-	maki?: string
+	/** Optional pin glyph override (Phosphor catalog name, e.g. Coffee). */
+	icon?: string
 	collapsed: boolean
 	children: NodeId[]
 }
@@ -72,7 +81,7 @@ export type Document = {
 	defaultPlaceColor: string
 }
 
-export type PlaceDraft = Omit<PlaceNode, 'id' | 'kind'>
+export type PlaceDraft = Omit<PlaceNode, 'id' | 'kind' | 'visible'>
 
 export type IsochroneDraft = Omit<IsochroneNode, 'id' | 'kind'>
 

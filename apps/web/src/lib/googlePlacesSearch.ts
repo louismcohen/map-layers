@@ -39,7 +39,8 @@ function toDraft(place: SearchTextPlace): PlaceDraft | null {
 	if (!id || lat == null || lng == null) return null
 
 	return {
-		mapboxId: id,
+		sourceProvider: 'google',
+		providerId: id,
 		name: place.displayName?.text?.trim() || 'Untitled place',
 		address: place.formattedAddress,
 		featureType: place.primaryType,
@@ -47,7 +48,7 @@ function toDraft(place: SearchTextPlace): PlaceDraft | null {
 	}
 }
 
-/** Places Text Search (New) — Pro field mask; no maki on drafts. */
+/** Places Text Search (New) — Pro field mask; no icon on drafts. */
 export async function searchText(params: {
 	query: string
 	bounds?: SearchBounds
