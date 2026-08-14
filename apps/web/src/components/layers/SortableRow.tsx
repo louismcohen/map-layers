@@ -58,7 +58,7 @@ export type SortableRowProps = {
     onMenuOpenChange: (open: boolean) => void;
     onStyleOpenChange: (open: boolean) => void;
     onPickColor: (color: string) => void;
-    onPickMaki: (maki: string | undefined) => void;
+    onPickIcon: (icon: string | undefined) => void;
     onUngroup: () => void;
     onDelete: () => void;
     onFit: () => void;
@@ -86,7 +86,7 @@ export function SortableRow({
     onMenuOpenChange,
     onStyleOpenChange,
     onPickColor,
-    onPickMaki,
+    onPickIcon,
     onUngroup,
     onDelete,
     onFit,
@@ -188,11 +188,11 @@ export function SortableRow({
                     {showStyle ? (
                         <LayerStylePicker
                             color={node.color}
-                            maki={isLayer ? node.maki : undefined}
+                            icon={isLayer ? node.icon : undefined}
                             open={styleOpen}
                             onOpenChange={onStyleOpenChange}
                             onPickColor={onPickColor}
-                            onPickMaki={onPickMaki}
+                            onPickIcon={onPickIcon}
                             showIcons={isLayer}
                         />
                     ) : null}

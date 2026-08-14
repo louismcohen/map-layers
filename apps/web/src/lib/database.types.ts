@@ -98,8 +98,8 @@ export type Database = {
         Row: {
           collapsed: boolean
           color: string
+          icon: string | null
           id: string
-          maki: string | null
           name: string
           visible: boolean
           workspace_id: string
@@ -107,8 +107,8 @@ export type Database = {
         Insert: {
           collapsed?: boolean
           color: string
+          icon?: string | null
           id: string
-          maki?: string | null
           name: string
           visible?: boolean
           workspace_id: string
@@ -116,8 +116,8 @@ export type Database = {
         Update: {
           collapsed?: boolean
           color?: string
+          icon?: string | null
           id?: string
-          maki?: string | null
           name?: string
           visible?: boolean
           workspace_id?: string
@@ -136,10 +136,10 @@ export type Database = {
         Row: {
           address: string | null
           feature_type: string | null
+          icon: string | null
           id: string
           lat: number
           lng: number
-          maki: string | null
           name: string
           provider_id: string
           source_provider: string
@@ -149,10 +149,10 @@ export type Database = {
         Insert: {
           address?: string | null
           feature_type?: string | null
+          icon?: string | null
           id: string
           lat: number
           lng: number
-          maki?: string | null
           name: string
           provider_id: string
           source_provider: string
@@ -162,10 +162,10 @@ export type Database = {
         Update: {
           address?: string | null
           feature_type?: string | null
+          icon?: string | null
           id?: string
           lat?: number
           lng?: number
-          maki?: string | null
           name?: string
           provider_id?: string
           source_provider?: string

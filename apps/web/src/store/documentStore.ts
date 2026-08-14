@@ -11,7 +11,7 @@ import {
 	setIsochroneVisible as domainSetIsochroneVisible,
 	setLayerCollapsed as domainSetLayerCollapsed,
 	setLayerColor as domainSetLayerColor,
-	setLayerMaki as domainSetLayerMaki,
+	setLayerIcon as domainSetLayerIcon,
 	setLayerVisible as domainSetLayerVisible,
 	setPlaceVisible as domainSetPlaceVisible,
 	ungroupLayer as domainUngroupLayer,
@@ -53,7 +53,7 @@ type DocumentStore = {
 	renameNode: (id: NodeId, name: string) => void
 	toggleLayerVisible: (id: NodeId) => void
 	setLayerColor: (id: NodeId, color: string) => void
-	setLayerMaki: (id: NodeId, maki: string | undefined) => void
+	setLayerIcon: (id: NodeId, icon: string | undefined) => void
 	setLayerCollapsed: (id: NodeId, collapsed: boolean) => void
 	togglePlaceVisible: (id: NodeId) => void
 	toggleIsochroneVisible: (id: NodeId) => void
@@ -149,8 +149,8 @@ export const useDocumentStore = create<DocumentStore>()((setState, getState) => 
 	setLayerColor: (id, color) => {
 		setState({ document: domainSetLayerColor(getState().document, id, color) })
 	},
-	setLayerMaki: (id, maki) => {
-		setState({ document: domainSetLayerMaki(getState().document, id, maki) })
+	setLayerIcon: (id, icon) => {
+		setState({ document: domainSetLayerIcon(getState().document, id, icon) })
 	},
 	setLayerCollapsed: (id, collapsed) => {
 		setState({ document: domainSetLayerCollapsed(getState().document, id, collapsed) })

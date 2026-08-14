@@ -48,7 +48,7 @@ function toDraft(place: SearchTextPlace): PlaceDraft | null {
 	}
 }
 
-/** Places Text Search (New) — Pro field mask; no maki on drafts. */
+/** Places Text Search (New) — Pro field mask; no icon on drafts. */
 export async function searchText(params: {
 	query: string
 	bounds?: SearchBounds

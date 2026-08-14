@@ -12,7 +12,7 @@ import {
 	setIsochroneColor,
 	setIsochroneVisible,
 	setLayerColor,
-	setLayerMaki,
+	setLayerIcon,
 	setLayerVisible,
 	setPlaceVisible,
 	ungroupLayer,
@@ -21,7 +21,7 @@ import { resolveDropTarget } from './resolveDropTarget'
 import {
 	flattenTree,
 	getEffectiveColor,
-	getEffectiveMaki,
+	getEffectiveIcon,
 	getParentId,
 	isEffectivelyVisible,
 	listAttachedIsochrones,
@@ -87,7 +87,7 @@ describe('domain tree', () => {
 		expect(getEffectiveColor(doc, placeId)).toBe('#136f63')
 	})
 
-	it('cascades layer maki over place maki', () => {
+	it('cascades layer icon over place icon', () => {
 		let doc = createEmptyDocument()
 		const { doc: withLayer, layerId } = createLayer(doc, { name: 'Food' })
 		doc = withLayer
@@ -98,9 +98,9 @@ describe('domain tree', () => {
 				{
 					name: 'Cafe',
 					sourceProvider: 'google',
-					providerId: 'poi.maki',
+					providerId: 'poi.cafe',
 					coordinates: { lng: 0, lat: 0 },
-					maki: 'cafe',
+					icon: 'cafe',
 				},
 			],
 		})
@@ -108,13 +108,13 @@ describe('domain tree', () => {
 		const placeId = added.addedIds[0]
 		if (!placeId) throw new Error('missing place')
 
-		expect(getEffectiveMaki(doc, placeId)).toBe('cafe')
+		expect(getEffectiveIcon(doc, placeId)).toBe('cafe')
 
-		doc = setLayerMaki(doc, layerId, 'restaurant')
-		expect(getEffectiveMaki(doc, placeId)).toBe('restaurant')
+		doc = setLayerIcon(doc, layerId, 'restaurant')
+		expect(getEffectiveIcon(doc, placeId)).toBe('restaurant')
 
-		doc = setLayerMaki(doc, layerId, undefined)
-		expect(getEffectiveMaki(doc, placeId)).toBe('cafe')
+		doc = setLayerIcon(doc, layerId, undefined)
+		expect(getEffectiveIcon(doc, placeId)).toBe('cafe')
 	})
 
 	it('nests layers and cascades visibility', () => {

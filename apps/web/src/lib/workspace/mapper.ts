@@ -57,7 +57,7 @@ export function rowsToDocument(snapshot: WorkspaceSnapshot): Document {
 			collapsed: row.collapsed,
 			children: [],
 		}
-		if (row.maki) layer.maki = row.maki
+		if (row.icon) layer.icon = row.icon
 		nodes[row.id] = layer
 	}
 
@@ -73,7 +73,7 @@ export function rowsToDocument(snapshot: WorkspaceSnapshot): Document {
 		}
 		if (row.address) place.address = row.address
 		if (row.feature_type) place.featureType = row.feature_type
-		if (row.maki) place.maki = row.maki
+		if (row.icon) place.icon = row.icon
 		nodes[row.id] = place
 	}
 
@@ -136,7 +136,7 @@ export function documentToRows(doc: Document, workspaceId: string): DocumentRows
 				name: node.name,
 				visible: node.visible,
 				color: node.color,
-				maki: node.maki ?? null,
+				icon: node.icon ?? null,
 				collapsed: node.collapsed,
 			})
 		} else if (node.kind === 'place') {
@@ -150,7 +150,7 @@ export function documentToRows(doc: Document, workspaceId: string): DocumentRows
 				lat: node.coordinates.lat,
 				address: node.address ?? null,
 				feature_type: node.featureType ?? null,
-				maki: node.maki ?? null,
+				icon: node.icon ?? null,
 				visible: node.visible,
 			})
 		} else {

@@ -95,27 +95,27 @@ export function getEffectiveColor(doc: Document, id: NodeId): string {
 }
 
 /**
- * Pin glyph: nearest ancestor layer with `maki` set wins (Phosphor catalog
- * name); otherwise the place’s Search Box `maki` (may be undefined → UI default).
+ * Pin glyph: nearest ancestor layer with `icon` set wins (Phosphor catalog
+ * name); otherwise the place’s `icon` (may be undefined → UI default).
  */
-export function getEffectiveMaki(doc: Document, id: NodeId): string | undefined {
+export function getEffectiveIcon(doc: Document, id: NodeId): string | undefined {
 	const node = doc.nodes[id]
 	if (!node) return undefined
 
-	if (node.kind === 'layer') return node.maki
+	if (node.kind === 'layer') return node.icon
 
 	for (const ancestorId of getAncestorLayerIds(doc, id)) {
 		const layer = getLayer(doc, ancestorId)
-		if (layer?.maki) return layer.maki
+		if (layer?.icon) return layer.icon
 	}
 
-	return node.kind === 'place' ? node.maki : undefined
+	return node.kind === 'place' ? node.icon : undefined
 }
 
 export type VisiblePlace = {
 	place: PlaceNode
 	color: string
-	maki?: string
+	icon?: string
 	parentLayerId: NodeId | null
 }
 
@@ -127,7 +127,7 @@ export function listVisiblePlaces(doc: Document): VisiblePlace[] {
 		result.push({
 			place: node,
 			color: getEffectiveColor(doc, node.id),
-			maki: getEffectiveMaki(doc, node.id),
+			icon: getEffectiveIcon(doc, node.id),
 			parentLayerId: getParentId(doc, node.id),
 		})
 	}

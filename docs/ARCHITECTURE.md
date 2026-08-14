@@ -3,7 +3,7 @@
 ## Status
 
 - Last updated: 2026-08-13
-- Implemented: living docs; monorepo; domain (+ `resolveDropTarget`); Zustand working copy (no persist middleware); Mapbox (LA default + geolocation); layers panel (**combined color + optional Phosphor icon** via `LayerStylePicker` + **react-color** `GithubPicker`; layer `maki` is a Phosphor catalog name); **whole-row** drag reorder; Phosphor icons for caret expand / eye visibility (**layers, places, isochrones**) / **isochrone walk·bike·drive**); **filled** pins: Phosphor catalog name on layer override; else Maki if place `maki` is a Mapbox name; else Phosphor from Google `featureType` (`MapPin` fallback); **Google Places Text Search** (Pro field mask + viewport `locationBias` + **Load More** pagination, ~60-result ceiling; pending-on-type + keep prior results until the new page; **No results** only after a settled empty response) with on-map preview pins (random color reused for new layers; **clear** control on search input); Mapbox Search Box client retained but unused; place identity via `sourceProvider` + `providerId` (dedupe / search selection); **isochrones** (time + distance; walk/bike/drive; user-chosen minutes/miles; create from search-row icon or place `…` menu; place-origin isochrones bind via `originPlaceId` — UI-nested under the place, move/delete locked, short names, **map-hidden when the origin place is hidden** without flipping the isochrone’s own `visible`; GeoJSON `Source`/`Layer`; **map-click select** via fill `queryRenderedFeatures`, overlaps pick **smallest area** and paint **largest→smallest** so small rings sit on top; provider-isolated Mapbox client with **denoise + generalize + Turf polygonSmooth**); fit bounds (places/layers only); modals/toasts; UI orchestration hooks (`usePlaceSearch`, `useIsochroneCreate`, `useFlyToUserOnce`, `useMapSidebarPadding`, `useWorkspaceSync`) + shared `mapCamera` helpers; **shadcn/ui (base-rhea / taupe, always light)** chrome — **floating `Sidebar`** (`AppSidebar`: search + layers + **AccountMenu** logout) over full-bleed map; desktop sidebar **resizable** (280–520px, default 360, `localStorage`); Mapbox **left padding** tracks live `--sidebar-width` so the visual center is the clear map strip (`setPadding` while dragging, `easeTo` on collapse/expand), cleared when the sidebar collapses / on mobile; **Supabase workspace schema** (`supabase/migrations/*_init_workspace.sql`: `workspaces` / `layers` / `places` / `isochrones` / `tree_nodes`, prefix CHECKs, FK indexes, explicit `GRANT` to `authenticated`, RLS with `(select auth.uid())` + `WITH CHECK`); **Supabase Auth** (browser `lib/supabase.ts` with publishable key + PKCE; magic link + email/password + password reset; `AuthGate` via `getClaims()`; sidebar logout with Alert Dialog confirm); **Postgres workspace sync** (`lib/workspace` mapper + PostgREST; hydrate on sign-in; debounced upserts; empty-client wipe aborted; logout cancels save and `resetLocal()`); **env template + static-deploy notes** (`apps/web/.env.example`, README; Mapbox URL + Google HTTP-referrer restrict)
+- Implemented: living docs; monorepo; domain (+ `resolveDropTarget`); Zustand working copy (no persist middleware); Mapbox (LA default + geolocation); layers panel (**combined color + optional Phosphor icon** via `LayerStylePicker` + **react-color** `GithubPicker`; layer `icon` is a Phosphor catalog name); **whole-row** drag reorder; Phosphor icons for caret expand / eye visibility (**layers, places, isochrones**) / **isochrone walk·bike·drive**); **filled** pins: Phosphor catalog name on layer override; else Maki if place `icon` is a leftover Mapbox name; else Phosphor from Google `featureType` (`MapPin` fallback); **Google Places Text Search** (Pro field mask + viewport `locationBias` + **Load More** pagination, ~60-result ceiling; pending-on-type + keep prior results until the new page; **No results** only after a settled empty response) with on-map preview pins (random color reused for new layers; **clear** control on search input); Mapbox Search Box client retained but unused; place identity via `sourceProvider` + `providerId` (dedupe / search selection); **isochrones** (time + distance; walk/bike/drive; user-chosen minutes/miles; create from search-row icon or place `…` menu; place-origin isochrones bind via `originPlaceId` — UI-nested under the place, move/delete locked, short names, **map-hidden when the origin place is hidden** without flipping the isochrone’s own `visible`; GeoJSON `Source`/`Layer`; **map-click select** via fill `queryRenderedFeatures`, overlaps pick **smallest area** and paint **largest→smallest** so small rings sit on top; provider-isolated Mapbox client with **denoise + generalize + Turf polygonSmooth**); fit bounds (places/layers only); modals/toasts; UI orchestration hooks (`usePlaceSearch`, `useIsochroneCreate`, `useFlyToUserOnce`, `useMapSidebarPadding`, `useWorkspaceSync`) + shared `mapCamera` helpers; **shadcn/ui (base-rhea / taupe, always light)** chrome — **floating `Sidebar`** (`AppSidebar`: search + layers + **AccountMenu** logout) over full-bleed map; desktop sidebar **resizable** (280–520px, default 360, `localStorage`); Mapbox **left padding** tracks live `--sidebar-width` so the visual center is the clear map strip (`setPadding` while dragging, `easeTo` on collapse/expand), cleared when the sidebar collapses / on mobile; **Supabase workspace schema** (`supabase/migrations/*_init_workspace.sql`: `workspaces` / `layers` / `places` / `isochrones` / `tree_nodes`, prefix CHECKs, FK indexes, explicit `GRANT` to `authenticated`, RLS with `(select auth.uid())` + `WITH CHECK`); **Supabase Auth** (browser `lib/supabase.ts` with publishable key + PKCE; magic link + email/password + password reset; `AuthGate` via `getClaims()`; sidebar logout with Alert Dialog confirm); **Postgres workspace sync** (`lib/workspace` mapper + PostgREST; hydrate on sign-in; debounced upserts; empty-client wipe aborted; logout cancels save and `resetLocal()`); **env template + static-deploy notes** (`apps/web/.env.example`, README; Mapbox URL + Google HTTP-referrer restrict)
 - In progress: none
 - Next: optional polish (layer opacity, clustering)
 - Deferred: see [Explicitly deferred](#explicitly-deferred)
@@ -35,7 +35,7 @@
 | DnD          | `@dnd-kit` for layer tree reorder/reparent                                                                                                                                                                                                                                    |
 | Motion       | `motion` (pin select / panel transitions)                                                                                                                                                                                                                                     |
 | Toasts       | **sonner** (via shadcn `Toaster`; `pushToast` in the store)                                                                                                                                                                                                                   |
-| Pin glyphs   | **Phosphor** catalog for layer picker + Google `primaryType`; **Maki** only for leftover Mapbox place `maki` (`googlePlaceIcon.ts`)                                                                                                                                           |
+| Pin glyphs   | **Phosphor** catalog for layer picker + Google `primaryType`; **Maki** only for leftover Mapbox place `icon` values (`googlePlaceIcon.ts`)                                                                                                                                     |
 | Color picker | **react-color** (`GithubPicker`) in `LayerStylePicker`                                                                                                                                                                                                                        |
 | App icons    | **`@phosphor-icons/react`** (layers/search chrome); shadcn primitives use Hugeicons                                                                                                                                                                                           |
 | Search       | **Google Places Text Search (New)** (active); Mapbox Search Box client retained but disconnected (see note below)                                                                                                                                                             |
@@ -50,7 +50,7 @@ Active search is **[Places Text Search (New)](https://developers.google.com/maps
 - Enable **Places API (New)** on the GCP key; restrict by HTTP referrer (local + prod origins). Mapbox token: URL restrictions for the same origins. See [Env](#env) / [Deploy](#deploy).
 - `PlaceNode.sourceProvider` + `PlaceNode.providerId` (Google Place ID from active search; Mapbox Search Box `mapbox_id` if re-wired)
 
-Map tiles, camera padding, and isochrones stay on Mapbox. [`mapboxSearch.ts`](../apps/web/src/lib/mapboxSearch.ts) is kept in-repo but unused by `usePlaceSearch` (easy to re-wire). Google drafts omit `maki`; pin glyphs resolve Phosphor from `featureType` (`primaryType`) via [`googlePlaceIcon.ts`](../apps/web/src/lib/googlePlaceIcon.ts) unless a layer override is set. Layer style picker uses the Phosphor catalog (legacy `maki` field). IndexedDB blob migrates (`migratePlaceVisibility`, `migrateDocumentLayerIcons`) stay in-repo unused — Postgres is a fresh schema, not a blob migrate.
+Map tiles, camera padding, and isochrones stay on Mapbox. [`mapboxSearch.ts`](../apps/web/src/lib/mapboxSearch.ts) is kept in-repo but unused by `usePlaceSearch` (easy to re-wire). Google drafts omit `icon`; pin glyphs resolve Phosphor from `featureType` (`primaryType`) via [`googlePlaceIcon.ts`](../apps/web/src/lib/googlePlaceIcon.ts) unless a layer override is set. Layer style picker writes Phosphor catalog names to `icon`. IndexedDB blob migrates (`migratePlaceVisibility`, `migrateDocumentLayerIcons`) stay in-repo unused — Postgres is a fresh schema, not a blob migrate.
 
 ---
 
@@ -84,7 +84,7 @@ map-layers/
 
 ### Postgres workspace schema (migrations)
 
-One **workspace** row per user (`user_id` → `auth.users`, unique). Child tables: `layers`, `places`, `isochrones`, `tree_nodes` (composite PK `(workspace_id, node_id)` for mixed sibling order). Client-minted text PKs with prefix CHECKs: `wsp_`, `lyr_`, `plc_`, `iso_`. FK indexes on `workspace_id` / `origin_place_id`. Data API: **explicit `GRANT` CRUD to `authenticated` only** (no useful `anon` grants) + RLS on every table — ownership `(select auth.uid()) = user_id` on `workspaces`, `EXISTS` workspace ownership on children; UPDATE policies include `WITH CHECK`.
+One **workspace** row per user (`user_id` → `auth.users`, unique). Child tables: `layers`, `places`, `isochrones`, `tree_nodes` (composite PK `(workspace_id, node_id)` for mixed sibling order). Pin glyph is `icon` on `layers` and `places` (catalog-neutral string; not a Maki-specific column). Client-minted text PKs with prefix CHECKs: `wsp_`, `lyr_`, `plc_`, `iso_`. FK indexes on `workspace_id` / `origin_place_id`. Data API: **explicit `GRANT` CRUD to `authenticated` only** (no useful `anon` grants) + RLS on every table — ownership `(select auth.uid()) = user_id` on `workspaces`, `EXISTS` workspace ownership on children; UPDATE policies include `WITH CHECK`.
 
 ### App layering (`apps/web`)
 
@@ -120,7 +120,7 @@ type PlaceNode = {
     coordinates: { lng: number; lat: number };
     address?: string;
     featureType?: string; // e.g. poi, address / Google primaryType
-    maki?: string; // Search Box Maki icon name (e.g. restaurant, cafe)
+    icon?: string; // optional pin glyph (Phosphor catalog, or leftover Mapbox Maki kebab)
     raw?: unknown; // optional in-memory payload; not persisted
     visible: boolean; // own toggle; ANDed with ancestor layers
 };
@@ -145,7 +145,7 @@ type LayerNode = {
     name: string;
     visible: boolean; // own toggle (effective = AND ancestors)
     color: string; // hex; drives pins / fills under this layer
-    maki?: string; // optional Phosphor catalog name (legacy field); overrides place pin glyphs under this layer
+    icon?: string; // optional Phosphor catalog name; overrides place pin glyphs under this layer
     collapsed: boolean; // UI-only, persisted for comfort
     children: NodeId[]; // ordered: layers and/or leaf content nodes
 };
@@ -163,7 +163,7 @@ type Document = {
 
 - **Visible:** node is shown iff every ancestor layer has `visible: true`, and for places and isochrones the node’s own `visible` is true. Place-origin isochrones also AND the origin place’s `visible` (the isochrone’s own toggle is left unchanged). Hidden parent ⇒ descendants hidden on the map (Figma/Photoshop behavior).
 - **Color:** walk from leaf → parent layers; use the **nearest ancestor layer’s `color`**. Root-level places use `defaultPlaceColor`. Root-level isochrones use their own `color` (panel color control like a layer). Nested isochrones inherit parent layer color.
-- **Pin glyph:** walk from leaf → parent layers; use the **nearest ancestor layer with `maki` set** (Phosphor catalog name). If none, use the place’s Mapbox `maki` if present. If still unset, UI uses Phosphor from `featureType` (Google `primaryType`), default `MapPin`. Nested layer icon overrides parent for its subtree only.
+- **Pin glyph:** walk from leaf → parent layers; use the **nearest ancestor layer with `icon` set** (Phosphor catalog name). If none, use the place’s `icon` if present. If still unset, UI uses Phosphor from `featureType` (Google `primaryType`), default `MapPin`. Nested layer icon overrides parent for its subtree only.
 - Nested layer with its own color overrides parent for its subtree only.
 
 ### Layer naming defaults
@@ -177,7 +177,7 @@ When creating a layer from search: **default name = the search query string** (t
 - `setLayerVisible(id, visible)` / `toggleLayerVisible(id)`
 - `setPlaceVisible(id, visible)` / `togglePlaceVisible(id)` — pin hide; attached isochrones disappear from the map via effective visibility, not by mutating their `visible`
 - `setLayerColor(id, color)`
-- `setLayerMaki(id, maki | undefined)` — optional Phosphor catalog name override for the layer’s subtree (legacy field name)
+- `setLayerIcon(id, icon | undefined)` — optional Phosphor catalog name override for the layer’s subtree
 - `moveNodes({ ids, targetParentId | root, index })` — reorder + reparent
 - `resolveDropTarget(doc, activeId, overId)` — map DnD over-target to `{ parentId, index }` for `moveNodes` (place→layer nests; layer→layer reorders as sibling)
 - `ungroupLayer(id)` — splice layer’s `children` into parent at the layer’s index; delete the layer node
@@ -228,7 +228,7 @@ Single `documentStore`:
 - Ephemeral panel state (query string, add destination) lives in `usePlaceSearch`, not the store
 - Actions wrap `packages/domain` mutations; `useWorkspaceSync` watches `document` (not UI ephemera) and debounces `saveWorkspace`
 
-Postgres is the source of truth. `lib/workspace` maps rows ↔ domain (`rowsToDocument` / `documentToRows`): `lng`/`lat` ↔ `coordinates`, `source_provider`/`provider_id` ↔ `sourceProvider`/`providerId`, `origin_place_id` ↔ `originPlaceId`, `tree_nodes` ordered by `parent_id` + `sort_index`. On sign-in, `ensureWorkspace` (upsert on `user_id`, ignore duplicates) then load child tables → `hydrateDocument`. Saves batch-upsert by id, then delete missing ids; **abort if the client tree is empty and the workspace is not** (never delete-all on empty). Logout cancels the debounce timer, `resetLocal()`, and **does not write**. Domain `createId` prefixes: `wsp_` / `lyr_` / `plc_` / `iso_`.
+Postgres is the source of truth. `lib/workspace` maps rows ↔ domain (`rowsToDocument` / `documentToRows`): `lng`/`lat` ↔ `coordinates`, `source_provider`/`provider_id` ↔ `sourceProvider`/`providerId`, `origin_place_id` ↔ `originPlaceId`, `icon` ↔ `icon`, `tree_nodes` ordered by `parent_id` + `sort_index`. On sign-in, `ensureWorkspace` (upsert on `user_id`, ignore duplicates) then load child tables → `hydrateDocument`. Saves batch-upsert by id, then delete missing ids; **abort if the client tree is empty and the workspace is not** (never delete-all on empty). Logout cancels the debounce timer, `resetLocal()`, and **does not write**. Domain `createId` prefixes: `wsp_` / `lyr_` / `plc_` / `iso_`.
 
 **Auth** gates the app (`AuthGate` + `getClaims()`); magic-link or password session lives in supabase-js. UI and `packages/domain` never call `supabase.from`.
 
@@ -238,7 +238,7 @@ Port patterns from `~/Developer/yelp-combinator-frontend` (not a hard dependency
 
 - Map shell like `MapRender.tsx`: same style URL + token env
 - Pins like `IconMarker` with `variant?: 'outline' | 'filled'` (**default `filled`**): 32px circle, shadow, selected spring scale — **`color` prop from effective layer color**. Filled = layer color fill (`${color}F2`), light border, soft top highlight, white glyph (yelp-combinator visited look). Outline = light gray gradient fill, colored border + glyph.
-- Inner glyph (`getEffectiveMaki`): Phosphor catalog name (layer override) → Phosphor; else Mapbox `maki` on the place → `@mapbox/maki` SVG; else Phosphor from `featureType`, default `MapPin`. Filled pins use Phosphor `weight="fill"` in white.
+- Inner glyph (`getEffectiveIcon`): Phosphor catalog name (layer override) → Phosphor; else leftover Mapbox Maki kebab on the place → `@mapbox/maki` SVG; else Phosphor from `featureType`, default `MapPin`. Filled pins use Phosphor `weight="fill"` in white.
 - Optional: Supercluster + `ClusterMarker` if pin density gets high; start without clustering, add if needed
 - Click pin → select place in tree + lightweight detail popover (name as rename button — pencil slides in from left / out to right on title hover; address; icon actions: isochrone / fit / delete — same as place row `…` menu)
 - Click isochrone fill → select that node in the tree (pins still win via `stopPropagation`). Overlapping fills pick the **smallest area** (`pickSmallestIsochroneId` + stored GeoJSON, not tile-clipped query geometry). Click the same contour again to clear, matching the layers panel. Miss still only dismisses place detail.
@@ -259,7 +259,7 @@ Layer groups stay DOM-tree UI only; they never become Mapbox style layers. Conto
 Active: `apps/web/src/lib/googlePlacesSearch.ts` (`searchText`). Dormant: `apps/web/src/lib/mapboxSearch.ts` (`forwardSearch`).
 
 1. Debounced Text Search with `locationBias.rectangle` = current viewport; `loading` flips on as soon as the query changes (no empty-state flash)
-2. Normalize places to `PlaceDraft` (`sourceProvider: 'google'`, `providerId` ← Place ID; `featureType` ← `primaryType`; no `maki`); keep the previous preview until the new page replaces it
+2. Normalize places to `PlaceDraft` (`sourceProvider: 'google'`, `providerId` ← Place ID; `featureType` ← `primaryType`; no `icon`); keep the previous preview until the new page replaces it
 3. Multi-select in results UI; **Load More** appends the next page (dedupe by `placeProviderKey`); add selected drafts into the tree
 
 ---
@@ -329,7 +329,7 @@ Places appear as rows under their layer (indent): name + eye + menu (chevron whe
 - Nested layers + root-level places
 - Show/hide with ancestor cascade (layers, places, isochrones; hiding a place map-hides attached isochrones without changing their toggles)
 - Per-layer color → pin color
-- Optional per-layer Phosphor icon → overrides descendant pin glyphs (else place Mapbox `maki`, else Phosphor from Google `featureType`)
+- Optional per-layer Phosphor icon → overrides descendant pin glyphs (else place `icon`, else Phosphor from Google `featureType`)
 - Create / rename / delete / ungroup / reorder / reparent
 - Google Places Text Search → add one / many / all (**Load More** pages)
 - Postgres workspace sync (one workspace per user; debounce upserts; empty-client wipe aborted)

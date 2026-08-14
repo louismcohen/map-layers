@@ -41,7 +41,7 @@ export function LayersPanel({ mapRef }: LayersPanelProps) {
 	const renameNode = useDocumentStore((s) => s.renameNode)
 	const toggleLayerVisible = useDocumentStore((s) => s.toggleLayerVisible)
 	const setLayerColor = useDocumentStore((s) => s.setLayerColor)
-	const setLayerMaki = useDocumentStore((s) => s.setLayerMaki)
+	const setLayerIcon = useDocumentStore((s) => s.setLayerIcon)
 	const setLayerCollapsed = useDocumentStore((s) => s.setLayerCollapsed)
 	const togglePlaceVisible = useDocumentStore((s) => s.togglePlaceVisible)
 	const toggleIsochroneVisible = useDocumentStore((s) => s.toggleIsochroneVisible)
@@ -185,8 +185,8 @@ export function LayersPanel({ mapRef }: LayersPanelProps) {
 												else if (row.node.kind === 'isochrone')
 													setIsochroneColor(row.id, color)
 											}}
-											onPickMaki={(maki) => {
-												if (row.node.kind === 'layer') setLayerMaki(row.id, maki)
+											onPickIcon={(icon) => {
+												if (row.node.kind === 'layer') setLayerIcon(row.id, icon)
 											}}
 											onUngroup={() => {
 												ungroupLayer(row.id)

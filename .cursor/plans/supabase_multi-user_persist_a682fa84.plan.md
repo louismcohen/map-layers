@@ -138,8 +138,8 @@ Create migrations with **`supabase migration new <name>`** — never invent `<ti
 
 `workspaces`: `id`, `user_id` unique → `auth.users(id)` **ON DELETE CASCADE** (PK only — do not rely on other `auth` unique indexes), `default_place_color`, `updated_at`
 
-- `layers`: `id`, `workspace_id`, `name`, `visible`, `color`, `maki`, `collapsed`
-- `places`: `id`, `workspace_id`, `name`, `source_provider` (`google`|`mapbox`), `provider_id`, `lng`, `lat`, `address`, `feature_type`, `maki`, `visible` — unique `(workspace_id, source_provider, provider_id)`
+- `layers`: `id`, `workspace_id`, `name`, `visible`, `color`, `icon`, `collapsed`
+- `places`: `id`, `workspace_id`, `name`, `source_provider` (`google`|`mapbox`), `provider_id`, `lng`, `lat`, `address`, `feature_type`, `icon`, `visible` — unique `(workspace_id, source_provider, provider_id)`
 - `isochrones`: `id`, `workspace_id`, `name`, `center_lng`, `center_lat`, `profile`, `metric`, `contours` jsonb, `geojson` jsonb, `color`, `visible`, `origin_place_id` nullable FK → `places(id)` on delete cascade
 - `tree_nodes`: composite PK `(workspace_id, node_id)`, `kind`, `parent_id` nullable, `sort_index` — mixed sibling order
 
@@ -177,7 +177,7 @@ erDiagram
     string name
     boolean visible
     string color
-    string maki
+    string icon
     boolean collapsed
   }
 
@@ -191,7 +191,7 @@ erDiagram
     float lat
     string address
     string feature_type
-    string maki
+    string icon
     boolean visible
   }
 

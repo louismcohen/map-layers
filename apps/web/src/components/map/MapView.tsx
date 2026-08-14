@@ -181,7 +181,7 @@ export function MapView({ mapRef, userLocation, onMoveEnd }: MapViewProps) {
                         </Source>
                     );
                 })}
-                {visiblePlaces.map(({ place, color, maki }) => (
+                {visiblePlaces.map(({ place, color, icon }) => (
                     <PlaceMarker
                         key={place.id}
                         id={place.id}
@@ -189,7 +189,7 @@ export function MapView({ mapRef, userLocation, onMoveEnd }: MapViewProps) {
                         latitude={place.coordinates.lat}
                         longitude={place.coordinates.lng}
                         color={color}
-                        maki={maki}
+                        icon={icon}
                         featureType={place.featureType}
                         selected={selectedPlaceId === place.id}
                         onClick={selectPlace}
@@ -208,7 +208,7 @@ export function MapView({ mapRef, userLocation, onMoveEnd }: MapViewProps) {
                             latitude={result.coordinates.lat}
                             longitude={result.coordinates.lng}
                             color={searchPreview.color}
-                            maki={result.maki}
+                            icon={result.icon}
                             featureType={result.featureType}
                             selected={searchPreview.selectedProviderKeys.includes(
                                 providerKey,

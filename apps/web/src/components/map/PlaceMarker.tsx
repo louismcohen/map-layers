@@ -17,7 +17,7 @@ type PlaceMarkerProps = {
     longitude: number;
     color: string;
     selected: boolean;
-    maki?: string;
+    icon?: string;
     featureType?: string;
     variant?: PlaceMarkerVariant;
     onClick: (id: string) => void;
@@ -30,7 +30,7 @@ function PlaceMarkerComponent({
     longitude,
     color,
     selected,
-    maki,
+    icon,
     featureType,
     variant = 'filled',
     onClick,
@@ -82,15 +82,15 @@ function PlaceMarkerComponent({
                                 : 'from-transparent',
                         )}
                     >
-                        {maki && isPlaceIconName(maki) ? (
+                        {icon && isPlaceIconName(icon) ? (
                             <PhosphorPlaceIcon
-                                name={maki}
+                                name={icon}
                                 color={filled ? iconFill : color}
                                 className='h-4 w-4'
                             />
-                        ) : maki ? (
+                        ) : icon ? (
                             <MakiGlyph
-                                maki={maki}
+                                maki={icon}
                                 color={filled ? iconFill : color}
                                 className='h-4 w-4'
                             />

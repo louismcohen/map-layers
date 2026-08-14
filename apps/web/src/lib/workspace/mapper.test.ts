@@ -49,7 +49,7 @@ function sampleDocument(): Document {
 				name: 'Cafes',
 				visible: true,
 				color: '#da2007',
-				maki: 'Coffee',
+				icon: 'Coffee',
 				collapsed: false,
 				children: ['lyr_nested', 'plc_nested', 'iso_nested'],
 			},

@@ -161,12 +161,12 @@ export function setLayerColor(doc: Document, id: NodeId, color: string): Documen
 }
 
 /** Set or clear (`undefined`) the layer’s pin glyph override (Phosphor name). */
-export function setLayerMaki(doc: Document, id: NodeId, maki: string | undefined): Document {
+export function setLayerIcon(doc: Document, id: NodeId, icon: string | undefined): Document {
 	const next = cloneDoc(doc)
 	const layer = getLayer(next, id)
 	if (!layer) throw new Error(`Layer not found: ${id}`)
-	if (maki) layer.maki = maki
-	else delete layer.maki
+	if (icon) layer.icon = icon
+	else delete layer.icon
 	return next
 }
 
@@ -320,7 +320,7 @@ export function addPlaces(doc: Document, input: AddPlacesInput): AddPlacesResult
 			coordinates: draft.coordinates,
 			address: draft.address,
 			featureType: draft.featureType,
-			maki: draft.maki,
+			icon: draft.icon,
 			raw: draft.raw,
 			visible: true,
 		}

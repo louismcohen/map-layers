@@ -24,7 +24,7 @@ const markerSvg = requireIconSvg('marker')
 /** Sorted Maki icon names available for pickers. */
 export const MAKI_ICON_NAMES = [...svgByName.keys()].sort((a, b) => a.localeCompare(b))
 
-/** Raw Maki SVG markup for a Search Box / layer `maki` name; unknown → marker. */
+/** Raw Maki SVG markup for a Mapbox Maki name; unknown → marker. */
 export function makiIconSvg(maki?: string): string {
 	if (maki) {
 		const svg = svgByName.get(maki)
