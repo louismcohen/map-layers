@@ -10,14 +10,24 @@ todos:
       status: completed
     - id: replace-idb
       content: Row mapper + hydrate/sync; debounce upserts; never delete-all on empty; logout must not save
-      status: pending
+      status: completed
     - id: env-docs-deploy
       content: Env example, README + Architecture; notes for static deploy and API key referrer restrict
-      status: pending
+      status: completed
 isProject: false
 ---
 
 # Server-backed persist (Supabase, relational)
+
+**Last updated:** 2026-08-13. Schema, auth UI, and IndexedDB replacement are in. Remaining: README / static-deploy / API-key referrer notes (`env-docs-deploy`). Architecture persist sections were updated with `replace-idb`.
+
+### `replace-idb` landed
+
+- [`lib/workspace/`](apps/web/src/lib/workspace/) — pure `mapper.ts` (`rowsToDocument` / `documentToRows` / `wouldWipeNonEmptyWorkspace`) + `api.ts` (`ensureWorkspace` / `loadWorkspace` / `saveWorkspace`) + `mapper.test.ts` (round-trip, tree order, empty-wipe guard). Public seam also re-exports `EmptyWorkspaceWipeError`.
+- [`useWorkspaceSync`](apps/web/src/hooks/useWorkspaceSync.ts) — hydrate on `INITIAL_SESSION` / `SIGNED_IN` / `PASSWORD_RECOVERY` (not token refresh); 800ms debounced `saveWorkspace`; skip the post-hydrate echo; on `SIGNED_OUT` cancel the timer, `resetLocal()`, **do not write**. Load is deferred with `queueMicrotask` so the auth callback does not deadlock.
+- [`documentStore`](apps/web/src/store/documentStore.ts) — no Zustand persist / `idb-keyval`; `workspaceId`, `hydrateDocument`, `resetLocal`. Mutations still do not call PostgREST.
+- [`App.tsx`](apps/web/src/App.tsx) — mounts `useWorkspaceSync`; authenticated chrome waits until `hydrated` (no edits against an empty tree); `Toaster` at the App root so load/save errors are visible.
+- Domain `createId` prefixes are `wsp` / `lyr` / `plc` / `iso` (Postgres CHECKs). `idb-keyval` removed; `vitest` in `apps/web`.
 
 IndexedDB is not the store. There is also **no custom backend**. The API is Supabase PostgREST over Postgres tables. The browser calls it with the signed-in user's JWT; **RLS** decides what rows exist for that request.
 
@@ -283,7 +293,7 @@ apps/web/src/
       mapper.ts                         # rowsToDocument / documentToRows (pure)
       mapper.test.ts                    # round-trip + tree_nodes order
       api.ts                            # loadWorkspace / saveWorkspace / ensureWorkspace
-      index.ts                          # re-export load/save only
+      index.ts                          # re-export load/save/ensure + EmptyWorkspaceWipeError
   hooks/
     useAuth.ts                          # getClaims gate, magic-link, signOut, onAuthStateChange
     useWorkspaceSync.ts                 # hydrate on sign-in; debounce save; skip on logout
@@ -301,7 +311,7 @@ apps/web/src/
 - [`lib/workspace/api.ts`](apps/web/src/lib/workspace/api.ts) — `ensureWorkspace()` — `INSERT … ON CONFLICT (user_id) DO NOTHING` then select by `(select auth.uid())` equivalent on the client (`user.id` from claims/session); mint `{ id: createId('wsp'), user_id }` with empty tree. `loadWorkspace()` — fetch four child tables, `rowsToDocument`. `saveWorkspace(doc, workspaceId)` — `documentToRows`, **batch** upserts by `id` (not per-row round trips), delete missing ids, **abort if delete set would wipe a non-empty workspace**. Update `workspaces.updated_at`.
 - [`lib/workspace/index.ts`](apps/web/src/lib/workspace/index.ts) — public seam: `loadWorkspace`, `saveWorkspace`, `ensureWorkspace`. Store/hooks import this, not table names.
 - [`hooks/useAuth.ts`](apps/web/src/hooks/useAuth.ts) — `claims` / loading from `getClaims()`; `signInWithOtp({ email, options: { emailRedirectTo } })`; `signOut()`; subscribe `onAuthStateChange`. Do not authorize from `getSession().user`.
-- [`hooks/useWorkspaceSync.ts`](apps/web/src/hooks/useWorkspaceSync.ts) — on `SIGNED_IN`: `loadWorkspace` → `hydrateDocument`. Subscribe to `document` (not UI ephemera); debounce flush → `saveWorkspace`. On `SIGNED_OUT`: cancel timer, `resetLocal()`, **do not write**.
+- [`hooks/useWorkspaceSync.ts`](apps/web/src/hooks/useWorkspaceSync.ts) — on `INITIAL_SESSION` / `SIGNED_IN` / `PASSWORD_RECOVERY`: `loadWorkspace` → `hydrateDocument`. Subscribe to `document` (not UI ephemera); debounce flush → `saveWorkspace`. On `SIGNED_OUT`: cancel timer, `resetLocal()`, **do not write**.
 - [`components/auth/AuthGate.tsx`](apps/web/src/components/auth/AuthGate.tsx) — gate on `getClaims`, around today’s chrome: unauthenticated users never see map/store data.
 - [`components/auth/LoginScreen.tsx`](apps/web/src/components/auth/LoginScreen.tsx) — magic-link form (existing shadcn `Input` / `Button`); default ConfirmationURL template (no `token_hash` server confirm route).
 - [`components/auth/AccountMenu.tsx`](apps/web/src/components/auth/AccountMenu.tsx) — compact email + Log out for the sidebar footer.
@@ -322,11 +332,11 @@ Create the init migration with **`supabase migration new init_workspace`** (or s
 ### Touched existing files (no new modules)
 
 - [`apps/web/src/store/documentStore.ts`](apps/web/src/store/documentStore.ts) — drop `persist`, `idb-keyval`, IDB empty-guard, IndexedDB migrate v2–v4. Keep `document` + UI ephemera. Add `workspaceId: string | null`, `hydrateDocument({ document, workspaceId })`, `resetLocal()` (empty doc, clear selection/preview, `hydrated: false`). Mutations stay domain wrappers; they do **not** call PostgREST (`useWorkspaceSync` watches `document`).
-- [`apps/web/src/App.tsx`](apps/web/src/App.tsx) — wrap with `AuthGate`; mount `useWorkspaceSync`; drop `useDocumentStore.persist.onFinishHydration`.
+- [`apps/web/src/App.tsx`](apps/web/src/App.tsx) — wrap with `AuthGate`; mount `useWorkspaceSync`; drop `useDocumentStore.persist.onFinishHydration`; wait on `hydrated` before showing map chrome.
 - [`apps/web/src/components/AppSidebar.tsx`](apps/web/src/components/AppSidebar.tsx) — render `AccountMenu` at the bottom of the floating sidebar (search / layers unchanged).
 - [`apps/web/src/vite-env.d.ts`](apps/web/src/vite-env.d.ts) + [`apps/web/.env.example`](apps/web/.env.example) — `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`.
 - [`apps/web/package.json`](apps/web/package.json) — add **pinned** `@supabase/supabase-js` (exact version, no `^`); remove `idb-keyval` and any `@supabase/ssr`; add `vitest` for mapper tests (domain already has it).
-- [`packages/domain/src/document.ts`](packages/domain/src/document.ts) — `createId(prefix: 'wsp' | 'lyr' | 'plc' | 'iso')` (today: `'layer'` / `'place'` / `'isochrone'`).
+- [`packages/domain/src/document.ts`](packages/domain/src/document.ts) — `createId(prefix: 'wsp' | 'lyr' | 'plc' | 'iso')`.
 - [`packages/domain/src/mutations.ts`](packages/domain/src/mutations.ts) — `createId('lyr'|'plc'|'iso')`. Workspace id is minted only in `ensureWorkspace`.
 - [`packages/domain/src/index.ts`](packages/domain/src/index.ts) + [`domain.test.ts`](packages/domain/src/domain.test.ts) — export prefix type; assert prefixes.
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) + [`README.md`](README.md) — Zustand = working copy; mapper = I/O seam; IndexedDB gone; env names only (`VITE_SUPABASE_PUBLISHABLE_KEY`).
