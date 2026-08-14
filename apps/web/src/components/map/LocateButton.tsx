@@ -35,7 +35,7 @@ export function LocateButton({ mapRef, userLocation, className }: LocateButtonPr
 			variant="outline"
 			size="icon-lg"
 			onClick={handleClick}
-			aria-label="Go to current location"
+			aria-label="Go To Current Location"
 			className={cn(
 				'size-12 rounded-full border-border bg-card/90 text-muted-foreground shadow-lg backdrop-blur hover:border-primary/50 hover:text-primary',
 				className,

@@ -267,7 +267,7 @@ export function SortableRow({
                                     <DropdownMenuItem
                                         onClick={onCreateSublayer}
                                     >
-                                        New sublayer
+                                        New Sublayer
                                     </DropdownMenuItem>
                                     <DropdownMenuItem onClick={onUngroup}>
                                         Ungroup
@@ -284,7 +284,7 @@ export function SortableRow({
                             </DropdownMenuItem>
                             {!isIsochrone ? (
                                 <DropdownMenuItem onClick={onFit}>
-                                    Fit to Map
+                                    Fit To Map
                                 </DropdownMenuItem>
                             ) : null}
                             <DropdownMenuItem

@@ -49,13 +49,13 @@ export function LayerStylePicker({
         <Popover open={open} onOpenChange={onOpenChange}>
             <PopoverTrigger
                 className='flex size-5 shrink-0 items-center justify-center'
-                aria-label={showIcons ? 'Layer color and icon' : 'Color'}
+                aria-label={showIcons ? 'Layer Color And Icon' : 'Color'}
                 title={
                     showIcons
                         ? maki
                             ? `Icon: ${maki}`
-                            : 'Set layer color and icon'
-                        : 'Set color'
+                            : 'Set Layer Color And Icon'
+                        : 'Set Color'
                 }
             >
                 {showIcons ? (

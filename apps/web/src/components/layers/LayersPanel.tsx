@@ -229,7 +229,7 @@ export function LayersPanel({ mapRef }: LayersPanelProps) {
 
 			<PromptModal
 				open={createOpen}
-				title="New layer"
+				title="New Layer"
 				label="Name"
 				confirmLabel="Create"
 				onCancel={() => setCreateOpen(false)}
@@ -245,7 +245,7 @@ export function LayersPanel({ mapRef }: LayersPanelProps) {
 
 			<PromptModal
 				open={Boolean(sublayerParentId)}
-				title="New sublayer"
+				title="New Sublayer"
 				label="Name"
 				confirmLabel="Create"
 				onCancel={() => setSublayerParentId(null)}

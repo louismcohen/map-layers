@@ -15,7 +15,7 @@ export function SidebarToggleButton({ variant }: SidebarToggleButtonProps) {
 	if (variant === 'overlay' && !isMobile && state !== 'collapsed') return null
 
 	const show = variant === 'overlay'
-	const label = show ? 'Show sidebar' : 'Hide sidebar'
+	const label = show ? 'Show Sidebar' : 'Hide Sidebar'
 
 	const button = (
 		<Button

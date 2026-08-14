@@ -42,9 +42,9 @@ export function SidebarResizeHandle({
         <button
             type='button'
             data-slot='sidebar-resize-handle'
-            aria-label='Resize sidebar'
+            aria-label='Resize Sidebar'
             tabIndex={-1}
-            title='Drag to resize'
+            title='Drag To Resize'
             onPointerDown={(event) => {
                 draggedRef.current = false;
                 event.currentTarget.setPointerCapture(event.pointerId);

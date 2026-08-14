@@ -7,7 +7,7 @@ todos:
       status: completed
     - id: auth-ui
       content: Supabase client (publishable key), magic-link login, getClaims gate, sidebar logout
-      status: pending
+      status: completed
     - id: replace-idb
       content: Row mapper + hydrate/sync; debounce upserts; never delete-all on empty; logout must not save
       status: pending
