@@ -72,8 +72,14 @@ function ringArea(ring: number[][]): number {
 	for (let i = 0; i < ring.length - 1; i++) {
 		const a = ring[i]
 		const b = ring[i + 1]
-		if (!a || !b) continue
-		sum += a[0] * b[1] - b[0] * a[1]
+		const ax = a?.[0]
+		const ay = a?.[1]
+		const bx = b?.[0]
+		const by = b?.[1]
+		if (ax === undefined || ay === undefined || bx === undefined || by === undefined) {
+			continue
+		}
+		sum += ax * by - bx * ay
 	}
 	return sum / 2
 }

@@ -427,6 +427,7 @@ export const PLACE_ICONS = {
 	Fire: FireIcon,
 	FirstAid: FirstAidIcon,
 	Fish: FishIcon,
+	FlagCheckered: FlagCheckeredIcon,
 	Flame: FlameIcon,
 	Flower: FlowerIcon,
 	FlowerLotus: FlowerLotusIcon,
