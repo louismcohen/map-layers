@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Slider } from '@/components/ui/slider';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export type IsochroneDialogCenter = {
@@ -93,6 +94,11 @@ const AMOUNT_BY_METRIC = {
         unit: 'mi',
     },
 } as const;
+
+function formatAmount(value: number, integer: boolean): string {
+    if (integer) return String(Math.round(value));
+    return String(Math.round(value * 10) / 10);
+}
 
 function OptionTabs<T extends string>({
     label,
@@ -170,6 +176,9 @@ export function IsochroneDialog({
         parsed > 0 &&
         parsed <= amountConfig.max &&
         (!amountConfig.integer || Number.isInteger(parsed));
+    const sliderValue = Number.isFinite(parsed)
+        ? Math.min(amountConfig.max, Math.max(amountConfig.min, parsed))
+        : amountConfig.defaultValue;
 
     return (
         <Dialog
@@ -228,29 +237,59 @@ export function IsochroneDialog({
                             >
                                 {amountConfig.label}
                             </Label>
-                            <div className='relative w-22'>
-                                <Input
-                                    id='iso-amount'
-                                    type='number'
-                                    inputMode='decimal'
+                            <div className='flex items-center gap-3'>
+                                <div className='relative w-22 shrink-0'>
+                                    <Input
+                                        id='iso-amount'
+                                        type='number'
+                                        inputMode='decimal'
+                                        min={amountConfig.min}
+                                        max={amountConfig.max}
+                                        step={amountConfig.step}
+                                        value={amount}
+                                        onChange={(e) =>
+                                            setAmount(e.target.value)
+                                        }
+                                        className='pr-10 tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none'
+                                    />
+                                    <span className='pointer-events-none absolute inset-0 flex items-baseline justify-end py-1 pr-3'>
+                                        <span
+                                            className='invisible w-0 overflow-hidden text-base'
+                                            aria-hidden
+                                        >
+                                            0
+                                        </span>
+                                        <span className='text-xs text-muted-foreground'>
+                                            {amountConfig.unit}
+                                        </span>
+                                    </span>
+                                </div>
+                                <Slider
+                                    aria-label={amountConfig.label}
+                                    className='min-w-0 flex-1'
+                                    disabled={submitting}
                                     min={amountConfig.min}
                                     max={amountConfig.max}
                                     step={amountConfig.step}
-                                    value={amount}
-                                    onChange={(e) => setAmount(e.target.value)}
-                                    className='pr-10 tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none'
+                                    value={[sliderValue]}
+                                    onValueChange={(values) => {
+                                        const next = Array.isArray(values)
+                                            ? values[0]
+                                            : values;
+                                        if (
+                                            typeof next !== 'number' ||
+                                            !Number.isFinite(next)
+                                        ) {
+                                            return;
+                                        }
+                                        setAmount(
+                                            formatAmount(
+                                                next,
+                                                amountConfig.integer,
+                                            ),
+                                        );
+                                    }}
                                 />
-                                <span className='pointer-events-none absolute inset-0 flex items-baseline justify-end pr-3 py-1'>
-                                    <span
-                                        className='invisible w-0 overflow-hidden text-base'
-                                        aria-hidden
-                                    >
-                                        0
-                                    </span>
-                                    <span className='text-xs text-muted-foreground'>
-                                        {amountConfig.unit}
-                                    </span>
-                                </span>
                             </div>
                             <p className='text-[11px] text-muted-foreground'>
                                 {amountConfig.hint}

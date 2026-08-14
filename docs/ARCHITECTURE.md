@@ -358,7 +358,7 @@ Independent leaf content kind in the same nested tree (only **layers** own `chil
 
 - **Search:** trailing map icon on each result → dialog → insert at **root** with no `originPlaceId` (freely movable). Auto-name includes label when available: `20 min walk from Café`.
 - **Existing place:** `…` / place detail → “Add isochrone…” → dialog → insert as **sibling** under the same parent, with `originPlaceId = placeId`. Panel nests under the place (collapsible); short name only (`20 min walk` — origin implied by nesting). Moving/deleting the place moves/deletes attached isochrones; hiding the place hides attached isochrones on the map without changing their `visible`; attached isochrones cannot be reparented away (reorder among peers / origin place only).
-- Dialog: **profile** (walking / cycling / driving) + **metric** (time / distance) as horizontal **shadcn Tabs** with Phosphor icons + **amount** input (minutes or miles). Single contour; miles converted to meters for the API. Limits: 1–60 min, up to 60 mi (floored to nearest 5 under Mapbox’s ~62.1 mi / 100 km cap).
+- Dialog: **profile** (walking / cycling / driving) + **metric** (time / distance) as horizontal **shadcn Tabs** with Phosphor icons + **amount** number input with a **shadcn Slider** beside it (minutes or miles; both stay in sync). Single contour; miles converted to meters for the API. Limits: 1–60 min, up to 60 mi (floored to nearest 5 under Mapbox’s ~62.1 mi / 100 km cap).
 
 ### Provider
 
