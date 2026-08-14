@@ -49,7 +49,7 @@ type IsochroneDialogProps = {
 };
 
 const DEFAULT_MINUTES = 15;
-const DEFAULT_MILES = 1;
+const DEFAULT_MILES = 10;
 
 const TAB_TRIGGER_CLASS =
     'gap-1 px-2 py-2 text-sm hover:text-[color-mix(in_oklch,var(--primary)_75%,var(--foreground))] data-active:text-primary data-active:hover:text-primary';
@@ -61,9 +61,9 @@ type TabOption<T extends string> = {
 };
 
 const PROFILES: TabOption<IsochroneProfile>[] = [
-    { value: 'driving', label: 'Drive', icon: CarProfileIcon },
-    { value: 'cycling', label: 'Bike', icon: PersonSimpleBikeIcon },
     { value: 'walking', label: 'Walk', icon: PersonSimpleWalkIcon },
+    { value: 'cycling', label: 'Bike', icon: PersonSimpleBikeIcon },
+    { value: 'driving', label: 'Drive', icon: CarProfileIcon },
 ];
 
 const METRICS: TabOption<IsochroneMetric>[] = [
@@ -80,6 +80,7 @@ const AMOUNT_BY_METRIC = {
         step: 1,
         hint: `Up to ${ISOCHRONE_MAX_MINUTES} minutes`,
         integer: true,
+        unit: 'min',
     },
     distance: {
         label: 'Travel Distance',
@@ -89,6 +90,7 @@ const AMOUNT_BY_METRIC = {
         step: 0.1,
         hint: `Up to ${ISOCHRONE_MAX_MILES} miles`,
         integer: false,
+        unit: 'mi',
     },
 } as const;
 
@@ -148,7 +150,7 @@ export function IsochroneDialog({
     onCancel,
     onConfirm,
 }: IsochroneDialogProps) {
-    const [profile, setProfile] = useState<IsochroneProfile>('driving');
+    const [profile, setProfile] = useState<IsochroneProfile>('walking');
     const [metric, setMetric] = useState<IsochroneMetric>('time');
     const [amount, setAmount] = useState(String(DEFAULT_MINUTES));
 
@@ -226,16 +228,30 @@ export function IsochroneDialog({
                             >
                                 {amountConfig.label}
                             </Label>
-                            <Input
-                                id='iso-amount'
-                                type='number'
-                                inputMode='decimal'
-                                min={amountConfig.min}
-                                max={amountConfig.max}
-                                step={amountConfig.step}
-                                value={amount}
-                                onChange={(e) => setAmount(e.target.value)}
-                            />
+                            <div className='relative w-22'>
+                                <Input
+                                    id='iso-amount'
+                                    type='number'
+                                    inputMode='decimal'
+                                    min={amountConfig.min}
+                                    max={amountConfig.max}
+                                    step={amountConfig.step}
+                                    value={amount}
+                                    onChange={(e) => setAmount(e.target.value)}
+                                    className='pr-10 tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none'
+                                />
+                                <span className='pointer-events-none absolute inset-0 flex items-baseline justify-end pr-3 py-1'>
+                                    <span
+                                        className='invisible w-0 overflow-hidden text-base'
+                                        aria-hidden
+                                    >
+                                        0
+                                    </span>
+                                    <span className='text-xs text-muted-foreground'>
+                                        {amountConfig.unit}
+                                    </span>
+                                </span>
+                            </div>
                             <p className='text-[11px] text-muted-foreground'>
                                 {amountConfig.hint}
                             </p>
