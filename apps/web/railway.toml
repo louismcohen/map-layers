@@ -1,0 +1,8 @@
+[build]
+builder = "railpack"
+buildCommand = "pnpm build"
+
+[deploy]
+startCommand = "pnpm start"
+healthcheckPath = "/"
+restartPolicyType = "ON_FAILURE"

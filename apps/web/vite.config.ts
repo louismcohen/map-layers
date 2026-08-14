@@ -16,6 +16,5 @@ export default defineConfig({
 	server: {
 		host: true,
 		port: 5173,
-		allowedHosts: ['map-layersweb-production.up.railway.app', 'ambit.louiscohen.me'],
 	},
 })

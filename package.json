@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "turbo run dev",
     "build": "turbo run build",
+    "start": "pnpm --filter @map-layers/web start",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "test": "turbo run test",
