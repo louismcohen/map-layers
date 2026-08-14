@@ -96,7 +96,7 @@ export function createLayer(
 	if (!name) throw new Error('Layer name is required')
 
 	const next = cloneDoc(doc)
-	const id = createId('layer')
+	const id = createId('lyr')
 	const parentId = input.parentId === undefined ? null : input.parentId
 	const layer: LayerNode = {
 		id,
@@ -310,7 +310,7 @@ export function addPlaces(doc: Document, input: AddPlacesInput): AddPlacesResult
 			skippedProviderKeys.push(key)
 			continue
 		}
-		const id = createId('place')
+		const id = createId('plc')
 		const place: PlaceNode = {
 			id,
 			kind: 'place',
@@ -371,7 +371,7 @@ export function addIsochrone(
 		index = list.length
 	}
 
-	const id = createId('isochrone')
+	const id = createId('iso')
 	const node: IsochroneNode = {
 		id,
 		kind: 'isochrone',

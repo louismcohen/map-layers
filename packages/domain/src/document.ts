@@ -23,7 +23,10 @@ export function migratePlaceVisibility(doc: Document): Document {
 	return changed ? { ...doc, nodes } : doc
 }
 
-export function createId(prefix = 'n'): string {
+/** Client-minted PK prefixes; Postgres CHECKs these. Workspace ids are minted in `ensureWorkspace` only. */
+export type IdPrefix = 'wsp' | 'lyr' | 'plc' | 'iso'
+
+export function createId(prefix: IdPrefix): string {
 	if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
 		return `${prefix}_${crypto.randomUUID()}`
 	}

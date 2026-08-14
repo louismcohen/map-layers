@@ -3,18 +3,18 @@
 ## Status
 
 - Last updated: 2026-08-13
-- Implemented: living docs; monorepo; domain (+ `resolveDropTarget`); Zustand/IndexedDB; Mapbox (LA default + geolocation); layers panel (**combined color + optional Phosphor icon** via `LayerStylePicker` + **react-color** `GithubPicker`; persisted layer `maki` migrated from Maki names → Phosphor catalog); **whole-row** drag reorder; Phosphor icons for caret expand / eye visibility (**layers, places, isochrones**) / **isochrone walk·bike·drive**); **filled** pins: Phosphor catalog name on layer override; else Maki if place `maki` is a Mapbox name; else Phosphor from Google `featureType` (`MapPin` fallback); **Google Places Text Search** (Pro field mask + viewport `locationBias` + **Load More** pagination, ~60-result ceiling; pending-on-type + keep prior results until the new page; **No results** only after a settled empty response) with on-map preview pins (random color reused for new layers; **clear** control on search input); Mapbox Search Box client retained but unused; place identity via `sourceProvider` + `providerId` (dedupe / search selection); **isochrones** (time + distance; walk/bike/drive; user-chosen minutes/miles; create from search-row icon or place `…` menu; place-origin isochrones bind via `originPlaceId` — UI-nested under the place, move/delete locked, short names, **map-hidden when the origin place is hidden** without flipping the isochrone’s own `visible`; GeoJSON `Source`/`Layer`; **map-click select** via fill `queryRenderedFeatures`, overlaps pick **smallest area** and paint **largest→smallest** so small rings sit on top; provider-isolated Mapbox client with **denoise + generalize + Turf polygonSmooth**); fit bounds (places/layers only); modals/toasts; UI orchestration hooks (`usePlaceSearch`, `useIsochroneCreate`, `useFlyToUserOnce`, `useMapSidebarPadding`) + shared `mapCamera` helpers; **shadcn/ui (base-rhea / taupe, always light)** chrome — **floating `Sidebar`** (`AppSidebar`: search + layers + **AccountMenu** logout) over full-bleed map; desktop sidebar **resizable** (280–520px, default 360, `localStorage`); Mapbox **left padding** tracks live `--sidebar-width` so the visual center is the clear map strip (`setPadding` while dragging, `easeTo` on collapse/expand), cleared when the sidebar collapses / on mobile; **Supabase workspace schema** (`supabase/migrations/*_init_workspace.sql`: `workspaces` / `layers` / `places` / `isochrones` / `tree_nodes`, prefix CHECKs, FK indexes, explicit `GRANT` to `authenticated`, RLS with `(select auth.uid())` + `WITH CHECK`); **Supabase Auth** (browser `lib/supabase.ts` with publishable key + PKCE; magic link + email/password + password reset; `AuthGate` via `getClaims()`; sidebar logout with Alert Dialog confirm)
+- Implemented: living docs; monorepo; domain (+ `resolveDropTarget`); Zustand working copy (no persist middleware); Mapbox (LA default + geolocation); layers panel (**combined color + optional Phosphor icon** via `LayerStylePicker` + **react-color** `GithubPicker`; layer `maki` is a Phosphor catalog name); **whole-row** drag reorder; Phosphor icons for caret expand / eye visibility (**layers, places, isochrones**) / **isochrone walk·bike·drive**); **filled** pins: Phosphor catalog name on layer override; else Maki if place `maki` is a Mapbox name; else Phosphor from Google `featureType` (`MapPin` fallback); **Google Places Text Search** (Pro field mask + viewport `locationBias` + **Load More** pagination, ~60-result ceiling; pending-on-type + keep prior results until the new page; **No results** only after a settled empty response) with on-map preview pins (random color reused for new layers; **clear** control on search input); Mapbox Search Box client retained but unused; place identity via `sourceProvider` + `providerId` (dedupe / search selection); **isochrones** (time + distance; walk/bike/drive; user-chosen minutes/miles; create from search-row icon or place `…` menu; place-origin isochrones bind via `originPlaceId` — UI-nested under the place, move/delete locked, short names, **map-hidden when the origin place is hidden** without flipping the isochrone’s own `visible`; GeoJSON `Source`/`Layer`; **map-click select** via fill `queryRenderedFeatures`, overlaps pick **smallest area** and paint **largest→smallest** so small rings sit on top; provider-isolated Mapbox client with **denoise + generalize + Turf polygonSmooth**); fit bounds (places/layers only); modals/toasts; UI orchestration hooks (`usePlaceSearch`, `useIsochroneCreate`, `useFlyToUserOnce`, `useMapSidebarPadding`, `useWorkspaceSync`) + shared `mapCamera` helpers; **shadcn/ui (base-rhea / taupe, always light)** chrome — **floating `Sidebar`** (`AppSidebar`: search + layers + **AccountMenu** logout) over full-bleed map; desktop sidebar **resizable** (280–520px, default 360, `localStorage`); Mapbox **left padding** tracks live `--sidebar-width` so the visual center is the clear map strip (`setPadding` while dragging, `easeTo` on collapse/expand), cleared when the sidebar collapses / on mobile; **Supabase workspace schema** (`supabase/migrations/*_init_workspace.sql`: `workspaces` / `layers` / `places` / `isochrones` / `tree_nodes`, prefix CHECKs, FK indexes, explicit `GRANT` to `authenticated`, RLS with `(select auth.uid())` + `WITH CHECK`); **Supabase Auth** (browser `lib/supabase.ts` with publishable key + PKCE; magic link + email/password + password reset; `AuthGate` via `getClaims()`; sidebar logout with Alert Dialog confirm); **Postgres workspace sync** (`lib/workspace` mapper + PostgREST; hydrate on sign-in; debounced upserts; empty-client wipe aborted; logout cancels save and `resetLocal()`)
 - In progress: none
-- Next: client persist (workspace mapper / `documentStore` / `useWorkspaceSync`); drop IndexedDB; optional polish (layer opacity, clustering)
+- Next: optional polish (layer opacity, clustering)
 - Deferred: see [Explicitly deferred](#explicitly-deferred)
 
 ---
 
 ## Product summary
 
-**Ambit** is a solo, local-first web app: full-bleed Mapbox map with a left **floating** shadcn sidebar (search + layers). Users search for places, add one/many/all results into nested layers (or the top of the tree), then show/hide layers and assign a layer color that drives all pins under that layer. Isochrones (time and distance) show the walk/bike/drive ambit around a place.
+**Ambit** is a signed-in web app: full-bleed Mapbox map with a left **floating** shadcn sidebar (search + layers). Users search for places, add one/many/all results into nested layers (or the top of the tree), then show/hide layers and assign a layer color that drives all pins under that layer. Isochrones (time and distance) show the walk/bike/drive ambit around a place. Each user has one Postgres workspace; the in-memory tree is a Zustand working copy.
 
-**Out of scope (v1):** import/export, multiplayer, realtime. Auth is in; Postgres sync is next.
+**Out of scope (v1):** import/export, multiplayer, realtime.
 
 ---
 
@@ -29,9 +29,9 @@
 | Lint/format  | Biome (root config)                                                                                                                                                                                                                                                           |
 | Map          | `mapbox-gl` + `react-map-gl`                                                                                                                                                                                                                                                  |
 | Map style    | `mapbox://styles/louiscohen/cm54miu4700j201qparty6veb` (from yelp-combinator)                                                                                                                                                                                                 |
-| Token        | `VITE_MAPBOX_ACCESS_TOKEN` (map + isochrones), `VITE_GOOGLE_MAPS_API_KEY` (place search), `VITE_SUPABASE_URL` + `VITE_SUPABASE_PUBLISHABLE_KEY` (Auth + upcoming PostgREST) in `apps/web/.env`                                                                              |
+| Token        | `VITE_MAPBOX_ACCESS_TOKEN` (map + isochrones), `VITE_GOOGLE_MAPS_API_KEY` (place search), `VITE_SUPABASE_URL` + `VITE_SUPABASE_PUBLISHABLE_KEY` (Auth + PostgREST) in `apps/web/.env`                                                                              |
 | Auth         | **Supabase Auth** magic link (`signInWithOtp` + `ConfirmationURL`) **or** email+password (`signInWithPassword` / `signUp` / `resetPasswordForEmail` + `updateUser` on `PASSWORD_RECOVERY`); SPA PKCE; gate with **`getClaims()`**; session in `@supabase/supabase-js` (pinned; no `@supabase/ssr`). Local emails → **Mailpit** (`supabase start`). Local `enable_confirmations = false` so password signup gets a session immediately |
-| State        | Zustand + persist to **IndexedDB** (`idb-keyval`) — migrating to Postgres workspace sync next                                                                                                                                                                                 |
+| State        | Zustand working copy (`documentStore`); persist via `lib/workspace` → PostgREST + RLS (no IndexedDB / persist middleware)                                                                                                                                                     |
 | DnD          | `@dnd-kit` for layer tree reorder/reparent                                                                                                                                                                                                                                    |
 | Motion       | `motion` (pin select / panel transitions)                                                                                                                                                                                                                                     |
 | Toasts       | **sonner** (via shadcn `Toaster`; `pushToast` in the store)                                                                                                                                                                                                                   |
@@ -50,13 +50,13 @@ Active search is **[Places Text Search (New)](https://developers.google.com/maps
 - Enable **Places API (New)** on the GCP key; restrict by HTTP referrer (local + prod origins)
 - `PlaceNode.sourceProvider` + `PlaceNode.providerId` (Google Place ID from active search; Mapbox Search Box `mapbox_id` if re-wired)
 
-Map tiles, camera padding, and isochrones stay on Mapbox. [`mapboxSearch.ts`](../apps/web/src/lib/mapboxSearch.ts) is kept in-repo but unused by `usePlaceSearch` (easy to re-wire). Google drafts omit `maki`; pin glyphs resolve Phosphor from `featureType` (`primaryType`) via [`googlePlaceIcon.ts`](../apps/web/src/lib/googlePlaceIcon.ts) unless a layer override is set. Layer style picker uses the Phosphor catalog; persist **v2** migrates stored Maki names → Phosphor (`Coffee`, `ForkKnife`, …) in the legacy `maki` field; persist **v3** defaults missing place `visible` to `true`.
+Map tiles, camera padding, and isochrones stay on Mapbox. [`mapboxSearch.ts`](../apps/web/src/lib/mapboxSearch.ts) is kept in-repo but unused by `usePlaceSearch` (easy to re-wire). Google drafts omit `maki`; pin glyphs resolve Phosphor from `featureType` (`primaryType`) via [`googlePlaceIcon.ts`](../apps/web/src/lib/googlePlaceIcon.ts) unless a layer override is set. Layer style picker uses the Phosphor catalog (legacy `maki` field). IndexedDB blob migrates (`migratePlaceVisibility`, `migrateDocumentLayerIcons`) stay in-repo unused — Postgres is a fresh schema, not a blob migrate.
 
 ---
 
 ## Monorepo layout
 
-Repo and npm packages stay `map-layers` / `@map-layers/*`; IndexedDB key stays `map-layers:v1`. The product name is **Ambit**.
+Repo and npm packages stay `map-layers` / `@map-layers/*`. The product name is **Ambit**. Client ids use prefixes `wsp_` / `lyr_` / `plc_` / `iso_`.
 
 ```
 map-layers/
@@ -78,9 +78,9 @@ map-layers/
   turbo.json
 ```
 
-- **`packages/domain`**: tree operations, effective visibility/color, DnD drop resolution, IDs — unit-testable without the UI.
+- **`packages/domain`**: tree operations, effective visibility/color, DnD drop resolution, client-minted ids (`createId` prefixes `wsp`/`lyr`/`plc`/`iso`) — unit-testable without the UI.
 - **`apps/web`**: Mapbox UI, Zustand store wiring, search client, pin components adapted from yelp-combinator.
-- **`supabase/`**: Postgres schema + Auth Site URL / Redirect URLs for SPA PKCE. Auth UI is live; document tree still on IndexedDB until workspace sync lands.
+- **`supabase/`**: Postgres schema + Auth Site URL / Redirect URLs for SPA PKCE. Auth + workspace sync are live.
 
 ### Postgres workspace schema (migrations)
 
@@ -91,9 +91,9 @@ One **workspace** row per user (`user_id` → `auth.users`, unique). Child table
 | Layer             | Responsibility                                                                                                  |
 | ----------------- | --------------------------------------------------------------------------------------------------------------- |
 | `packages/domain` | Pure document/tree rules (mutations, selectors, `resolveDropTarget`)                                            |
-| `lib/`            | I/O adapters (`supabase` browser client, `googlePlacesSearch` active, `mapboxSearch` dormant, `isochrone/` provider), Google→Phosphor pin map (`googlePlaceIcon`), Mapbox camera helpers (`mapCamera`); generated `database.types.ts` |
-| `store/`          | Zustand: document + selection + `searchPreview`; wraps domain; toasts via sonner                                |
-| `hooks/`          | React lifecycle + store coordination (`useAuth`, `usePlaceSearch`, `useLocation`, camera policies, `useMapSidebarPadding`) |
+| `lib/`            | I/O adapters (`supabase` browser client, `workspace/` mapper+api, `googlePlacesSearch` active, `mapboxSearch` dormant, `isochrone/` provider), Google→Phosphor pin map (`googlePlaceIcon`), Mapbox camera helpers (`mapCamera`); generated `database.types.ts` |
+| `store/`          | Zustand working copy: domain `Document` + selection + `searchPreview`; wraps domain; toasts via sonner; `hydrateDocument` / `resetLocal` — does not call PostgREST |
+| `hooks/`          | React lifecycle + store coordination (`useAuth`, `useWorkspaceSync`, `usePlaceSearch`, `useLocation`, camera policies, `useMapSidebarPadding`) |
 | `components/`     | Presentational UI: props/events in, render out (`components/ui` = stock shadcn; `components/auth/` = `AuthGate` / `LoginScreen` / `ResetPasswordScreen` / `AccountMenu`; `components/sidebar/` = width/resize/toggle) |
 
 No backend package in v1.
@@ -212,7 +212,8 @@ flowchart LR
   end
   Store --> TreeOps
   Store --> Selectors
-  Store --> IDB[(IndexedDB)]
+  Store --> Mapper[lib/workspace]
+  Mapper --> REST[PostgREST plus RLS]
   SearchClient --> GooglePlaces[Google Places Text Search]
   mapboxSearchDormant[mapboxSearch.ts dormant]
   MapView --> MapboxGL[Mapbox GL + custom style]
@@ -222,12 +223,14 @@ flowchart LR
 
 Single `documentStore`:
 
-- `document: Document`
+- `document: Document` + `workspaceId`
 - UI: `selectedNodeIds`, `selectedPlaceId` (map focus), `searchPreview` (`color`, `results`, `selectedProviderKeys`)
 - Ephemeral panel state (query string, add destination) lives in `usePlaceSearch`, not the store
-- Actions wrap `packages/domain` mutations, then persist
+- Actions wrap `packages/domain` mutations; `useWorkspaceSync` watches `document` (not UI ephemera) and debounces `saveWorkspace`
 
-Persist middleware → IndexedDB key `map-layers:v1` (persist **version 3**: v2 migrates layer `maki` from Maki names to Phosphor catalog; v3 defaults missing place `visible` to `true`). Empty documents are not written over existing stored layers. **Auth** gates the app (`AuthGate` + `getClaims()`); magic-link or password session lives in supabase-js. Postgres workspace sync (replacing IndexedDB) is next.
+Postgres is the source of truth. `lib/workspace` maps rows ↔ domain (`rowsToDocument` / `documentToRows`): `lng`/`lat` ↔ `coordinates`, `source_provider`/`provider_id` ↔ `sourceProvider`/`providerId`, `origin_place_id` ↔ `originPlaceId`, `tree_nodes` ordered by `parent_id` + `sort_index`. On sign-in, `ensureWorkspace` (upsert on `user_id`, ignore duplicates) then load child tables → `hydrateDocument`. Saves batch-upsert by id, then delete missing ids; **abort if the client tree is empty and the workspace is not** (never delete-all on empty). Logout cancels the debounce timer, `resetLocal()`, and **does not write**. Domain `createId` prefixes: `wsp_` / `lyr_` / `plc_` / `iso_`.
+
+**Auth** gates the app (`AuthGate` + `getClaims()`); magic-link or password session lives in supabase-js. UI and `packages/domain` never call `supabase.from`.
 
 ### Map rendering (dual path by design)
 
@@ -329,7 +332,7 @@ Places appear as rows under their layer (indent): name + eye + menu (chevron whe
 - Optional per-layer Phosphor icon → overrides descendant pin glyphs (else place Mapbox `maki`, else Phosphor from Google `featureType`)
 - Create / rename / delete / ungroup / reorder / reparent
 - Google Places Text Search → add one / many / all (**Load More** pages)
-- Local persistence (IndexedDB) — until Postgres workspace sync
+- Postgres workspace sync (one workspace per user; debounce upserts; empty-client wipe aborted)
 - Auth: magic link, email+password, or password reset (`AuthGate` + sidebar logout with confirm)
 - Place select on map ↔ tree highlight; isochrone fill click ↔ tree highlight (smallest overlapping area wins)
 - Fit bounds to layer or selection
@@ -374,7 +377,7 @@ Clicking a visible fill selects that isochrone (`selectedNodeIds`, place detail 
 
 ### Persistence / ToS
 
-Store full GeoJSON plus `center` / `profile` / `metric` / `contours` on the node (IndexedDB). Mapbox ToS generally discourage caching service content and Isochrone has no permanent-storage flag; acceptable for this solo local-first prototype — params are retained so a future refetch path does not need a schema break. Results are always displayed on a Mapbox map.
+Store full GeoJSON plus `center` / `profile` / `metric` / `contours` on the isochrone row (JSONB columns). Mapbox ToS generally discourage caching service content and Isochrone has no permanent-storage flag; acceptable for this prototype — params are retained so a future refetch path does not need a schema break. Results are always displayed on a Mapbox map.
 
 ---
 
@@ -399,6 +402,8 @@ Store full GeoJSON plus `center` / `profile` / `metric` / `contours` on the node
 ```
 VITE_MAPBOX_ACCESS_TOKEN=<token>
 VITE_GOOGLE_MAPS_API_KEY=<key>
+VITE_SUPABASE_URL=<url>
+VITE_SUPABASE_PUBLISHABLE_KEY=<sb_publishable_…>
 ```
 
 `.env.example` documents the key names only; do not commit secrets. Token names only in this doc. Enable **Places API (New)** on the Google key; restrict by HTTP referrer.

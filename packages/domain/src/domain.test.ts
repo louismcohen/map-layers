@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { createEmptyDocument, migratePlaceVisibility } from './document'
+import { createEmptyDocument, createId, migratePlaceVisibility } from './document'
+import { isochroneArea, pickSmallestIsochroneId } from './isochroneArea'
 import {
 	addIsochrone,
 	addPlaces,
@@ -16,7 +17,6 @@ import {
 	setPlaceVisible,
 	ungroupLayer,
 } from './mutations'
-import { isochroneArea, pickSmallestIsochroneId } from './isochroneArea'
 import { resolveDropTarget } from './resolveDropTarget'
 import {
 	flattenTree,
@@ -32,6 +32,28 @@ import type { IsochroneGeoJSON } from './types'
 import { milesToMeters } from './types'
 
 describe('domain tree', () => {
+	it('mints 3-letter id prefixes', () => {
+		expect(createId('wsp')).toMatch(/^wsp_/)
+		expect(createId('lyr')).toMatch(/^lyr_/)
+		expect(createId('plc')).toMatch(/^plc_/)
+		expect(createId('iso')).toMatch(/^iso_/)
+
+		const { layerId } = createLayer(createEmptyDocument(), { name: 'Cafes' })
+		expect(layerId.startsWith('lyr_')).toBe(true)
+
+		const added = addPlaces(createEmptyDocument(), {
+			places: [
+				{
+					name: 'Blue Bottle',
+					sourceProvider: 'google',
+					providerId: 'poi.1',
+					coordinates: { lng: -122.4, lat: 37.8 },
+				},
+			],
+		})
+		expect(added.addedIds[0]?.startsWith('plc_')).toBe(true)
+	})
+
 	it('creates layers and places with effective color/visibility', () => {
 		let doc = createEmptyDocument()
 		const { doc: withLayer, layerId } = createLayer(doc, { name: 'Cafes', color: '#da2007' })
@@ -639,9 +661,7 @@ describe('domain tree', () => {
 		expect(isEffectivelyVisible(doc, standalone.id)).toBe(true)
 		expect(doc.nodes[attached.id]).toMatchObject({ visible: true })
 		expect(listVisiblePlaces(doc)).toHaveLength(0)
-		expect(listVisibleIsochrones(doc).map((item) => item.isochrone.id)).toEqual([
-			standalone.id,
-		])
+		expect(listVisibleIsochrones(doc).map((item) => item.isochrone.id)).toEqual([standalone.id])
 
 		doc = setIsochroneVisible(doc, attached.id, false)
 		doc = setPlaceVisible(doc, placeId, true)
