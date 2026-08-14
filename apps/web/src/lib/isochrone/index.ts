@@ -3,5 +3,10 @@ export {
 	isochroneFillLayerId,
 	isochroneIdFromFillLayerId,
 } from './hitTest'
-export { IsochroneRequestError, mapboxIsochroneProvider } from './mapboxIsochrone'
+export {
+	generalizeMeters,
+	IsochroneRequestError,
+	mapboxIsochroneProvider,
+	smoothIterations,
+} from './mapboxIsochrone'
 export type { IsochroneProvider, IsochroneRequest } from './types'
