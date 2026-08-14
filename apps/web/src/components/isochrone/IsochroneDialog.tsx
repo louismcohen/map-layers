@@ -164,7 +164,7 @@ export function IsochroneDialog({
 
     useEffect(() => {
         if (open) {
-            setProfile('driving');
+            setProfile('walking');
             setMetric('time');
             setAmount(String(DEFAULT_MINUTES));
         }

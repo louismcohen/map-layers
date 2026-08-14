@@ -24,7 +24,7 @@ Static Vite SPA — no app Node server. `pnpm build` emits `apps/web/dist`. Host
 2. Point the app at a **hosted** Supabase project (not local). Apply `supabase/migrations`. In the dashboard, set **Site URL** and **Redirect URLs** to the production origin (exact URL; same origin as magic-link `emailRedirectTo`).
 3. Restrict Mapbox URL + Google HTTP referrer to that production origin (keep the local origins if you reuse the same keys). Do not set `Referrer-Policy` to `no-referrer` or `same-origin` — restricted keys need a `Referer` header.
 
-Railway: `railway.toml` runs `pnpm build` then `pnpm start` (serves `apps/web/dist` on `$PORT`). Do not use `vite` / `pnpm dev` as the start command. Keep the service root as the repo.
+Railway: `railway.toml` runs `pnpm build` then `serve` on `$PORT`. Do not use `vite` / `pnpm dev` as the start command. Keep the service root as the repo.
 
 ## Docs
 
